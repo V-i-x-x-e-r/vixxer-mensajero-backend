@@ -1,40 +1,32 @@
 # ============================================
 # VIXXER MENSAJERO - BACKEND
-# Node.js + Express gitignore
+# Python + FastAPI gitignore
 # ============================================
 
-# ---------- Dependencies ----------
-node_modules/
-jspm_packages/
-.pnp
-.pnp.js
+# ---------- Entorno virtual ----------
+.venv/
+venv/
+env/
+ENV/
 
-# ---------- Logs ----------
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-pnpm-debug.log*
-
-# ---------- Runtime ----------
-pids/
-*.pid
-*.seed
-*.pid.lock
-
-# ---------- Coverage y testing ----------
-coverage/
-.nyc_output/
-*.lcov
-junit.xml
-
-# ---------- Build outputs ----------
-dist/
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 build/
-out/
-*.tsbuildinfo
+dist/
+*.egg-info/
+.eggs/
+
+# ---------- Testing / coverage ----------
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
 
 # ---------- Environment ----------
 .env
@@ -46,46 +38,24 @@ out/
 
 # ---------- Editor ----------
 .vscode/
-!.vscode/settings.json.example
 .idea/
 *.swp
 *.swo
 *~
-*.sublime-project
-*.sublime-workspace
 
 # ---------- OS ----------
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 desktop.ini
 
-# ---------- Generados localmente ----------
+# ---------- Secretos / local ----------
 secret/
 keys/
 tmp/
 temp/
-.cache/
-uploads/
-
-# ---------- Certificados ----------
 *.pem
-*.pem.pub
 *.key
 *.crt
-
-# ---------- Database local ----------
 *.sqlite
 *.sqlite3
 *.db
-
-# ---------- Misc ----------
-.eslintcache
-.parcel-cache/
-.next/
-.nuxt/
-.turbo/
