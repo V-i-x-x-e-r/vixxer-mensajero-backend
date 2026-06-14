@@ -62,6 +62,11 @@ uvicorn app.main:app --reload --port 8000
 
 Ver [`.env.example`](.env.example). Nunca subas el `.env` real.
 
+## Base de datos
+
+El esquema inicial de Supabase vive en [`sql/001_esquema_inicial.sql`](sql/001_esquema_inicial.sql).
+En Semana 1, César y Paola lo ejecutan desde el SQL Editor de Supabase.
+
 ---
 
 ## Equipo
