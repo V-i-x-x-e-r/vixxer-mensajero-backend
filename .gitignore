@@ -1,15 +1,10 @@
-# ============================================
-# VIXXER MENSAJERO - BACKEND
-# Python + FastAPI gitignore
-# ============================================
-
-# ---------- Entorno virtual ----------
+# Entorno virtual
 .venv/
 venv/
 env/
 ENV/
 
-# ---------- Python ----------
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -20,7 +15,7 @@ dist/
 *.egg-info/
 .eggs/
 
-# ---------- Testing / coverage ----------
+# Testing / coverage
 .pytest_cache/
 .coverage
 htmlcov/
@@ -28,7 +23,7 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# ---------- Environment ----------
+# Variables de entorno
 .env
 .env.local
 .env.*.local
@@ -36,19 +31,22 @@ htmlcov/
 .env.production
 .env.test
 
-# ---------- Editor ----------
+# Node (sobra del scaffold inicial)
+node_modules/
+
+# Editor
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# ---------- OS ----------
+# OS
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# ---------- Secretos / local ----------
+# Secretos / local
 secret/
 keys/
 tmp/
