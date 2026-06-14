@@ -37,7 +37,7 @@
 
 ## Sobre el proyecto
 
-Backend de **Vixxer Mensajero**. Provee autenticación, persistencia de usuarios y mensajes cifrados, y comunicación bidireccional en tiempo real vía Socket.IO. El cliente vive en [`vixxer-mensajero-mobile`](https://github.com/vixxer/vixxer-mensajero-mobile).
+Backend de **Vixxer Mensajero**. Provee autenticación, persistencia de usuarios y mensajes cifrados, y comunicación bidireccional en tiempo real vía Socket.IO. El cliente vive en [`vixxer-mensajero-mobile`](https://github.com/V-i-x-x-e-r/vixxer-mensajero-mobile).
 
 ### Principios de diseño
 
@@ -93,7 +93,7 @@ Backend de **Vixxer Mensajero**. Provee autenticación, persistencia de usuarios
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/vixxer/vixxer-mensajero-backend.git
+git clone https://github.com/V-i-x-x-e-r/vixxer-mensajero-backend.git
 cd vixxer-mensajero-backend
 
 # 2. Cambiar a la rama de integración
@@ -315,7 +315,7 @@ Mismo flujo que el cliente. Resumen:
 - `develop` → integración
 - `feature/*`, `fix/*`, `hotfix/*`, `release/*` → ramas temporales
 
-Documentación completa en [`vixxer-docs/gitflow.md`](https://github.com/vixxer/vixxer-docs).
+Documentación completa en [`vixxer-docs/gitflow.md`](https://github.com/V-i-x-x-e-r/vixxer-docs).
 
 ---
 
