@@ -1,10 +1,8 @@
 fastapi
-unicorn[standard]
-python-socket
+uvicorn[standard]
+python-socketio
 supabase
-python-jose[cryptography] (JWT)
-passlib[bcrypt] (passwords)
+python-jose[cryptography]
+bcrypt
 pydantic-settings
 python-dotenv
-
-
