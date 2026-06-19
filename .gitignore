@@ -41,6 +41,9 @@ node_modules/
 *.swo
 *~
 
+# Pruebas locales (no son parte del proyecto)
+test_socket.html
+
 # OS
 .DS_Store
 Thumbs.db
