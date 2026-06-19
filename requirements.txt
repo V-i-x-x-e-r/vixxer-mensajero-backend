@@ -1,0 +1,10 @@
+fastapi
+unicorn[standard]
+python-socket
+supabase
+python-jose[cryptography] (JWT)
+passlib[bcrypt] (passwords)
+pydantic-settings
+python-dotenv
+
+
