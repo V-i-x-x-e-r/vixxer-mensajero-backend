@@ -2,8 +2,15 @@ import socketio
 
 from app.core.security import leer_token
 from app.db import mensajes as mensajes_repo
+from app.db import usuarios as usuarios_repo
 
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+
+en_linea = set()
+
+
+def esta_en_linea(user_id):
+    return user_id in en_linea
 
 
 @sio.event
@@ -13,6 +20,16 @@ async def connect(sid, environ, auth):
         return False
     await sio.save_session(sid, {"user_id": user_id})
     await sio.enter_room(sid, user_id)
+    en_linea.add(user_id)
+
+
+@sio.event
+async def disconnect(sid):
+    session = await sio.get_session(sid)
+    user_id = session.get("user_id") if session else None
+    if user_id:
+        en_linea.discard(user_id)
+        usuarios_repo.marcar_desconexion(user_id)
 
 
 @sio.on("mensaje:enviar")
@@ -53,7 +70,11 @@ async def mensaje_entregado(sid, data):
 
 @sio.on("mensaje:leido")
 async def mensaje_leido(sid, data):
+    session = await sio.get_session(sid)
+    lector = usuarios_repo.buscar_por_id(session["user_id"])
     filas = mensajes_repo.marcar_leido(data.get("ids", []))
+    if lector and not lector.get("mostrar_acuses", True):
+        return
     for fila in filas:
         await sio.emit(
             "mensaje:leido",
