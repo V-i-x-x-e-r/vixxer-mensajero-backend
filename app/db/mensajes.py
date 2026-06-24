@@ -34,6 +34,37 @@ def marcar_leido(ids: list):
     return r.data
 
 
+def conversaciones(usuario_id: str, limite: int = 300):
+    r = (
+        supabase.table("mensajes")
+        .select("*")
+        .or_(f"remitente_id.eq.{usuario_id},destinatario_id.eq.{usuario_id}")
+        .order("enviado_en", desc=True)
+        .limit(limite)
+        .execute()
+    )
+    ultimos = {}
+    no_leidos = {}
+    for m in r.data:
+        otro = m["destinatario_id"] if m["remitente_id"] == usuario_id else m["remitente_id"]
+        if otro not in ultimos:
+            ultimos[otro] = m
+        if m["destinatario_id"] == usuario_id and m["leido_en"] is None:
+            no_leidos[otro] = no_leidos.get(otro, 0) + 1
+    salida = []
+    for otro, ultimo in ultimos.items():
+        salida.append({
+            "otro_id": otro,
+            "ultimo_cifrado": ultimo["contenido_cifrado"],
+            "ultimo_nonce": ultimo["nonce"],
+            "ultimo_remitente_id": ultimo["remitente_id"],
+            "enviado_en": ultimo["enviado_en"],
+            "no_leidos": no_leidos.get(otro, 0),
+        })
+    salida.sort(key=lambda c: c["enviado_en"], reverse=True)
+    return salida
+
+
 def conversacion(usuario_a: str, usuario_b: str, limite: int = 50):
     filtro = (
         f"and(remitente_id.eq.{usuario_a},destinatario_id.eq.{usuario_b}),"
