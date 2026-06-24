@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.sockets.server import sio
 from app.routers.auth import router as auth_router
 from app.routers.usuarios import router as usuarios_router
+from app.routers.mensajes import router as mensajes_router
 
 app = FastAPI(title="Vixxer Mensajero API")
 
@@ -18,6 +19,7 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(usuarios_router, prefix="/api")
+app.include_router(mensajes_router, prefix="/api")
 
 
 @app.get("/health")
