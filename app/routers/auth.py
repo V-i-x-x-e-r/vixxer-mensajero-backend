@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 
 from app.schemas.auth import RegistroIn, LoginIn
 from app.core.security import hashear_password, verificar_password, crear_token
+from app.core.codigo import generar_codigo
 from app.core.deps import usuario_actual
 from app.db import usuarios as repo
 
@@ -12,12 +13,16 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def register(datos: RegistroIn):
     if repo.buscar_por_usuario(datos.usuario):
         raise HTTPException(status_code=409, detail="Ese usuario ya existe")
+    codigo = generar_codigo()
+    while repo.buscar_por_codigo(codigo):
+        codigo = generar_codigo()
     nuevo = repo.crear({
         "usuario": datos.usuario,
         "clave_hash": hashear_password(datos.contrasena),
         "llave_publica": datos.llave_publica,
+        "codigo": codigo,
     })
-    return {"id": nuevo["id"], "usuario": nuevo["usuario"]}
+    return {"id": nuevo["id"], "usuario": nuevo["usuario"], "codigo": codigo}
 
 
 @router.post("/login")
