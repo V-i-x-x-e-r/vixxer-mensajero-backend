@@ -58,7 +58,7 @@ def lista(yo: str = Depends(usuario_actual)):
     for uid in repo.ids_amigos(yo):
         u = usuarios_repo.buscar_por_id(uid)
         if u:
-            salida.append({"id": u["id"], "usuario": u["usuario"], "llave_publica": u["llave_publica"]})
+            salida.append({"id": u["id"], "usuario": u["usuario"], "llave_publica": u["llave_publica"], "avatar_url": u.get("avatar_url")})
     return salida
 
 

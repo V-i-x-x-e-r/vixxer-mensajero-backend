@@ -1,9 +1,14 @@
+import base64
+import time
+
 from fastapi import APIRouter, HTTPException, Depends
 
 from app.core.deps import usuario_actual
 from app.core.codigo import normalizar_codigo
 from app.db import usuarios as repo
+from app.db.supabase import supabase
 from app.schemas.preferencias import PreferenciasIn
+from app.schemas.avatar import AvatarIn
 from app.sockets.server import esta_en_linea
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -22,7 +27,17 @@ def mi_codigo(yo: str = Depends(usuario_actual)):
     user = repo.buscar_por_id(yo)
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return {"codigo": user["codigo"]}
+    return {"usuario": user["usuario"], "codigo": user["codigo"], "avatar_url": user.get("avatar_url")}
+
+
+@router.post("/avatar")
+def subir_avatar(datos: AvatarIn, yo: str = Depends(usuario_actual)):
+    crudo = base64.b64decode(datos.imagen)
+    path = f"{yo}/{int(time.time())}.jpg"
+    supabase.storage.from_("avatares").upload(path, crudo, {"content-type": datos.tipo or "image/jpeg"})
+    url = supabase.storage.from_("avatares").get_public_url(path)
+    repo.actualizar(yo, {"avatar_url": url})
+    return {"avatar_url": url}
 
 
 @router.get("/preferencias")
