@@ -8,7 +8,7 @@ from app.core.config import settings
 def crear_token(usuario_id: str) -> str:
     payload = {
         "sub": usuario_id,
-        "exp": datetime.now(timezone.utc) + timedelta(hours=12),
+        "exp": datetime.now(timezone.utc) + timedelta(days=30),
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALG)
 
