@@ -36,7 +36,7 @@ def buscar_por_codigo(codigo: str):
 def buscar(q: str, excepto_id: str, limite: int = 20):
     r = (
         supabase.table("usuarios")
-        .select("id, usuario, llave_publica")
+        .select("id, usuario, llave_publica, avatar_url")
         .ilike("usuario", f"%{q}%")
         .neq("id", excepto_id)
         .limit(limite)
