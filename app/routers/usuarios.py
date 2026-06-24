@@ -34,8 +34,8 @@ def mi_codigo(yo: str = Depends(usuario_actual)):
 def subir_avatar(datos: AvatarIn, yo: str = Depends(usuario_actual)):
     crudo = base64.b64decode(datos.imagen)
     path = f"{yo}/{int(time.time())}.jpg"
-    supabase.storage.from_("avatares").upload(path, crudo, {"content-type": datos.tipo or "image/jpeg"})
-    url = supabase.storage.from_("avatares").get_public_url(path)
+    supabase.storage.from_("Avatares").upload(path, crudo, {"content-type": datos.tipo or "image/jpeg"})
+    url = supabase.storage.from_("Avatares").get_public_url(path)
     repo.actualizar(yo, {"avatar_url": url})
     return {"avatar_url": url}
 
