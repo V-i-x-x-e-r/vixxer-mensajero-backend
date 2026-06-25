@@ -10,6 +10,7 @@ from app.db.supabase import supabase
 from app.schemas.preferencias import PreferenciasIn
 from app.schemas.avatar import AvatarIn
 from app.schemas.llave import LlaveIn
+from app.schemas.respaldo import RespaldoIn
 from app.sockets.server import esta_en_linea
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -35,6 +36,28 @@ def mi_codigo(yo: str = Depends(usuario_actual)):
 def actualizar_llave(datos: LlaveIn, yo: str = Depends(usuario_actual)):
     repo.actualizar(yo, {"llave_publica": datos.llave_publica})
     return {"ok": True}
+
+
+@router.put("/respaldo")
+def guardar_respaldo(datos: RespaldoIn, yo: str = Depends(usuario_actual)):
+    repo.actualizar(yo, {
+        "respaldo_cifrado": datos.cifrado,
+        "respaldo_nonce": datos.nonce,
+        "respaldo_salt": datos.salt,
+    })
+    return {"ok": True}
+
+
+@router.get("/respaldo")
+def obtener_respaldo(yo: str = Depends(usuario_actual)):
+    user = repo.buscar_por_id(yo)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return {
+        "cifrado": user.get("respaldo_cifrado"),
+        "nonce": user.get("respaldo_nonce"),
+        "salt": user.get("respaldo_salt"),
+    }
 
 
 @router.post("/avatar")
