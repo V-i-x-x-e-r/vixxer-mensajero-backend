@@ -20,3 +20,9 @@ def conversaciones(yo: str = Depends(usuario_actual)):
         if u:
             salida.append({**c, "usuario": u["usuario"], "avatar_url": u.get("avatar_url")})
     return salida
+
+
+@router.delete("/conversacion/{otro_id}")
+def borrar_conversacion(otro_id: str, yo: str = Depends(usuario_actual)):
+    repo.limpiar_conversacion(yo, otro_id)
+    return {"ok": True}
