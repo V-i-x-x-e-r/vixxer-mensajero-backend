@@ -9,6 +9,7 @@ from app.db import usuarios as repo
 from app.db.supabase import supabase
 from app.schemas.preferencias import PreferenciasIn
 from app.schemas.avatar import AvatarIn
+from app.schemas.llave import LlaveIn
 from app.sockets.server import esta_en_linea
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -28,6 +29,12 @@ def mi_codigo(yo: str = Depends(usuario_actual)):
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return {"usuario": user["usuario"], "codigo": user["codigo"], "avatar_url": user.get("avatar_url")}
+
+
+@router.put("/llave-publica")
+def actualizar_llave(datos: LlaveIn, yo: str = Depends(usuario_actual)):
+    repo.actualizar(yo, {"llave_publica": datos.llave_publica})
+    return {"ok": True}
 
 
 @router.post("/avatar")
