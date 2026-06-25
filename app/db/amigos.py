@@ -54,6 +54,14 @@ def ids_amigos(usuario_id: str):
     return ids
 
 
+def eliminar_amistad(usuario_id: str, otro_id: str):
+    filtro = (
+        f"and(de_id.eq.{usuario_id},para_id.eq.{otro_id}),"
+        f"and(de_id.eq.{otro_id},para_id.eq.{usuario_id})"
+    )
+    supabase.table("solicitudes").delete().eq("estado", "aceptada").or_(filtro).execute()
+
+
 def crear_bloqueo(usuario_id: str, bloqueado_id: str):
     r = (
         supabase.table("bloqueos")

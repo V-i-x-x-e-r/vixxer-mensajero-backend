@@ -82,3 +82,15 @@ async def mensaje_leido(sid, data):
             {"id": fila["id"], "leido_en": fila["leido_en"]},
             room=fila["remitente_id"],
         )
+
+
+@sio.on("mensaje:reaccionar")
+async def mensaje_reaccionar(sid, data):
+    session = await sio.get_session(sid)
+    usuario_id = session["user_id"]
+    fila = mensajes_repo.reaccionar(data["id"], usuario_id, data["emoji"])
+    if not fila:
+        return
+    carga = {"id": fila["id"], "reacciones": fila["reacciones"]}
+    await sio.emit("mensaje:reaccion", carga, room=fila["remitente_id"])
+    await sio.emit("mensaje:reaccion", carga, room=fila["destinatario_id"])

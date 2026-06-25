@@ -4,6 +4,7 @@ from app.core.deps import usuario_actual
 from app.core.codigo import normalizar_codigo
 from app.db import amigos as repo
 from app.db import usuarios as usuarios_repo
+from app.db import mensajes as mensajes_repo
 from app.schemas.amigos import SolicitarIn, AccionIn, BloquearIn
 
 router = APIRouter(prefix="/amigos", tags=["amigos"])
@@ -67,4 +68,11 @@ def bloquear(datos: BloquearIn, yo: str = Depends(usuario_actual)):
     if datos.user_id == yo:
         raise HTTPException(status_code=400, detail="No puedes bloquearte")
     repo.crear_bloqueo(yo, datos.user_id)
+    return {"ok": True}
+
+
+@router.delete("/{otro_id}")
+def eliminar(otro_id: str, yo: str = Depends(usuario_actual)):
+    repo.eliminar_amistad(yo, otro_id)
+    mensajes_repo.limpiar_conversacion(yo, otro_id)
     return {"ok": True}
