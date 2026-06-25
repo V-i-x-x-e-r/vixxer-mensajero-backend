@@ -41,6 +41,7 @@ async def mensaje_enviar(sid, data):
         "destinatario_id": data["destinatarioId"],
         "contenido_cifrado": data["contenidoCifrado"],
         "nonce": data["nonce"],
+        "respuesta_a": data.get("respuestaA"),
     })
     await sio.emit("mensaje:recibido", fila, room=data["destinatarioId"])
     return {"ok": True, "id": fila["id"]}
