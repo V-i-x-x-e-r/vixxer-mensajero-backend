@@ -90,6 +90,18 @@ async def mensaje_leido(sid, data):
         )
 
 
+@sio.on("entregar:pendientes")
+async def entregar_pendientes(sid, data=None):
+    session = await sio.get_session(sid)
+    user_id = session["user_id"]
+    for fila in mensajes_repo.marcar_entregados_de(user_id):
+        await sio.emit(
+            "mensaje:entregado",
+            {"id": fila["id"], "entregado_en": fila["entregado_en"]},
+            room=fila["remitente_id"],
+        )
+
+
 @sio.on("mensaje:reaccionar")
 async def mensaje_reaccionar(sid, data):
     session = await sio.get_session(sid)
