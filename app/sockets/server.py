@@ -21,6 +21,12 @@ async def connect(sid, environ, auth):
     await sio.save_session(sid, {"user_id": user_id})
     await sio.enter_room(sid, user_id)
     en_linea.add(user_id)
+    for fila in mensajes_repo.marcar_entregados_de(user_id):
+        await sio.emit(
+            "mensaje:entregado",
+            {"id": fila["id"], "entregado_en": fila["entregado_en"]},
+            room=fila["remitente_id"],
+        )
 
 
 @sio.event

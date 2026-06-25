@@ -20,6 +20,18 @@ def marcar_entregado(mensaje_id: str):
     return r.data[0] if r.data else None
 
 
+def marcar_entregados_de(destinatario_id: str):
+    ahora = datetime.now(timezone.utc).isoformat()
+    r = (
+        supabase.table("mensajes")
+        .update({"entregado_en": ahora})
+        .eq("destinatario_id", destinatario_id)
+        .is_("entregado_en", "null")
+        .execute()
+    )
+    return r.data
+
+
 def marcar_leido(ids: list):
     if not ids:
         return []
