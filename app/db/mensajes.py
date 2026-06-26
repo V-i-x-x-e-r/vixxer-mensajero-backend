@@ -9,16 +9,50 @@ def guardar(datos: dict):
     return r.data[0]
 
 
-def marcar_entregado(mensaje_id: str):
+def marcar_entregado(mensaje_id: str, destinatario_id: str):
+    if not es_uuid(mensaje_id) or not es_uuid(destinatario_id):
+        return None
     ahora = datetime.now(timezone.utc).isoformat()
     r = (
         supabase.table("mensajes")
         .update({"entregado_en": ahora})
         .eq("id", mensaje_id)
+        .eq("destinatario_id", destinatario_id)
         .is_("entregado_en", "null")
         .execute()
     )
     return r.data[0] if r.data else None
+
+
+def editar(mensaje_id: str, remitente_id: str, cifrado: str, nonce: str):
+    if not es_uuid(mensaje_id) or not es_uuid(remitente_id):
+        return None
+    r = (
+        supabase.table("mensajes")
+        .update({"contenido_cifrado": cifrado, "nonce": nonce, "editado": True})
+        .eq("id", mensaje_id)
+        .eq("remitente_id", remitente_id)
+        .execute()
+    )
+    return r.data[0] if r.data else None
+
+
+def borrar(mensaje_id: str, remitente_id: str):
+    if not es_uuid(mensaje_id) or not es_uuid(remitente_id):
+        return None
+    r = (
+        supabase.table("mensajes")
+        .select("id, destinatario_id")
+        .eq("id", mensaje_id)
+        .eq("remitente_id", remitente_id)
+        .limit(1)
+        .execute()
+    )
+    if not r.data:
+        return None
+    fila = r.data[0]
+    supabase.table("mensajes").delete().eq("id", mensaje_id).eq("remitente_id", remitente_id).execute()
+    return fila
 
 
 def marcar_entregados_de(destinatario_id: str):
@@ -33,14 +67,16 @@ def marcar_entregados_de(destinatario_id: str):
     return r.data
 
 
-def marcar_leido(ids: list):
-    if not ids:
+def marcar_leido(ids: list, lector_id: str):
+    ids = [i for i in (ids or []) if es_uuid(i)]
+    if not ids or not es_uuid(lector_id):
         return []
     ahora = datetime.now(timezone.utc).isoformat()
     r = (
         supabase.table("mensajes")
         .update({"leido_en": ahora})
         .in_("id", ids)
+        .eq("destinatario_id", lector_id)
         .is_("leido_en", "null")
         .execute()
     )
