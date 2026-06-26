@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from app.db.supabase import supabase
+from app.core.validar import es_uuid
 
 
 def guardar(datos: dict):
@@ -71,6 +72,8 @@ def reaccionar(mensaje_id: str, usuario_id: str, emoji: str):
 
 
 def limpiar_conversacion(usuario_id: str, otro_id: str):
+    if not es_uuid(usuario_id) or not es_uuid(otro_id):
+        return
     ahora = datetime.now(timezone.utc).isoformat()
     supabase.table("limpiezas").upsert(
         {"usuario_id": usuario_id, "otro_id": otro_id, "limpiado_en": ahora},
@@ -89,6 +92,8 @@ def _limpiezas_de(usuario_id: str):
 
 
 def conversaciones(usuario_id: str, limite: int = 300):
+    if not es_uuid(usuario_id):
+        return []
     r = (
         supabase.table("mensajes")
         .select("*")
@@ -124,6 +129,8 @@ def conversaciones(usuario_id: str, limite: int = 300):
 
 
 def conversacion(usuario_a: str, usuario_b: str, limite: int = 50):
+    if not es_uuid(usuario_a) or not es_uuid(usuario_b):
+        return []
     filtro = (
         f"and(remitente_id.eq.{usuario_a},destinatario_id.eq.{usuario_b}),"
         f"and(remitente_id.eq.{usuario_b},destinatario_id.eq.{usuario_a})"
