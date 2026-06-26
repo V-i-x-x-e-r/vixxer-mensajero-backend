@@ -1,8 +1,10 @@
 import socketio
 
 from app.core.security import leer_token
+from app.core.validar import es_uuid
 from app.db import mensajes as mensajes_repo
 from app.db import usuarios as usuarios_repo
+from app.db import amigos as amigos_repo
 
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
 
@@ -42,14 +44,18 @@ async def disconnect(sid):
 async def mensaje_enviar(sid, data):
     session = await sio.get_session(sid)
     remitente_id = session["user_id"]
+    destinatario_id = data.get("destinatarioId")
+    if not es_uuid(destinatario_id) or destinatario_id not in amigos_repo.ids_amigos(remitente_id):
+        return {"ok": False, "error": "no_permitido"}
+    respuesta_a = data.get("respuestaA")
     fila = mensajes_repo.guardar({
         "remitente_id": remitente_id,
-        "destinatario_id": data["destinatarioId"],
+        "destinatario_id": destinatario_id,
         "contenido_cifrado": data["contenidoCifrado"],
         "nonce": data["nonce"],
-        "respuesta_a": data.get("respuestaA"),
+        "respuesta_a": respuesta_a if es_uuid(respuesta_a) else None,
     })
-    await sio.emit("mensaje:recibido", fila, room=data["destinatarioId"])
+    await sio.emit("mensaje:recibido", fila, room=destinatario_id)
     return {"ok": True, "id": fila["id"]}
 
 

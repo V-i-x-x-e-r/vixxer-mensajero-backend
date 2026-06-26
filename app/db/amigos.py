@@ -1,4 +1,5 @@
 from app.db.supabase import supabase
+from app.core.validar import es_uuid
 
 
 def buscar_solicitud(de_id: str, para_id: str):
@@ -41,6 +42,8 @@ def pendientes(para_id: str):
 
 
 def ids_amigos(usuario_id: str):
+    if not es_uuid(usuario_id):
+        return []
     r = (
         supabase.table("solicitudes")
         .select("de_id, para_id")
@@ -55,6 +58,8 @@ def ids_amigos(usuario_id: str):
 
 
 def eliminar_amistad(usuario_id: str, otro_id: str):
+    if not es_uuid(usuario_id) or not es_uuid(otro_id):
+        return
     filtro = (
         f"and(de_id.eq.{usuario_id},para_id.eq.{otro_id}),"
         f"and(de_id.eq.{otro_id},para_id.eq.{usuario_id})"
