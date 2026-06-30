@@ -42,7 +42,7 @@ def borrar(mensaje_id: str, remitente_id: str):
         return None
     r = (
         supabase.table("mensajes")
-        .delete()
+        .update({"contenido_cifrado": "BORRADO", "nonce": ""})
         .eq("id", mensaje_id)
         .eq("remitente_id", remitente_id)
         .execute()
