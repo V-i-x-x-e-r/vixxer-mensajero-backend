@@ -159,21 +159,23 @@ def conversaciones(usuario_id: str, limite: int = 300):
     return salida
 
 
-def conversacion(usuario_a: str, usuario_b: str, limite: int = 50):
+def conversacion(usuario_a: str, usuario_b: str, limite: int = 50, antes: str = None):
     if not es_uuid(usuario_a) or not es_uuid(usuario_b):
         return []
     filtro = (
         f"and(remitente_id.eq.{usuario_a},destinatario_id.eq.{usuario_b}),"
         f"and(remitente_id.eq.{usuario_b},destinatario_id.eq.{usuario_a})"
     )
-    r = (
+    consulta = (
         supabase.table("mensajes")
         .select("*")
         .or_(filtro)
         .order("enviado_en", desc=True)
         .limit(limite)
-        .execute()
     )
+    if antes:
+        consulta = consulta.lt("enviado_en", antes)
+    r = consulta.execute()
     filas = list(reversed(r.data))
     corte = _limpiezas_de(usuario_a).get(usuario_b)
     if corte:
