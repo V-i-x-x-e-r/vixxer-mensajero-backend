@@ -6,11 +6,13 @@ from fastapi import APIRouter, HTTPException, Depends
 from app.core.deps import usuario_actual
 from app.core.codigo import normalizar_codigo
 from app.db import usuarios as repo
+from app.db import push as push_repo
 from app.db.supabase import supabase
 from app.schemas.preferencias import PreferenciasIn
 from app.schemas.avatar import AvatarIn
 from app.schemas.llave import LlaveIn
 from app.schemas.respaldo import RespaldoIn
+from app.schemas.push import PushTokenIn
 from app.sockets.server import esta_en_linea
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -35,6 +37,12 @@ def mi_codigo(yo: str = Depends(usuario_actual)):
 @router.put("/llave-publica")
 def actualizar_llave(datos: LlaveIn, yo: str = Depends(usuario_actual)):
     repo.actualizar(yo, {"llave_publica": datos.llave_publica})
+    return {"ok": True}
+
+
+@router.put("/push-token")
+def guardar_push_token(datos: PushTokenIn, yo: str = Depends(usuario_actual)):
+    push_repo.guardar(yo, datos.token, datos.plataforma)
     return {"ok": True}
 
 
