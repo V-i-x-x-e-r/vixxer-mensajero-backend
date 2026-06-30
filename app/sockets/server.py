@@ -72,7 +72,8 @@ async def usuario_escribiendo(sid, data):
 
 @sio.on("mensaje:entregado")
 async def mensaje_entregado(sid, data):
-    fila = mensajes_repo.marcar_entregado(data["id"])
+    session = await sio.get_session(sid)
+    fila = mensajes_repo.marcar_entregado(data["id"], session["user_id"])
     if fila:
         await sio.emit(
             "mensaje:entregado",
@@ -81,11 +82,31 @@ async def mensaje_entregado(sid, data):
         )
 
 
+@sio.on("mensaje:editar")
+async def mensaje_editar(sid, data):
+    session = await sio.get_session(sid)
+    fila = mensajes_repo.editar(data["id"], session["user_id"], data["contenidoCifrado"], data["nonce"])
+    if fila:
+        await sio.emit(
+            "mensaje:editado",
+            {"id": fila["id"], "contenido_cifrado": fila["contenido_cifrado"], "nonce": fila["nonce"]},
+            room=fila["destinatario_id"],
+        )
+
+
+@sio.on("mensaje:borrar")
+async def mensaje_borrar(sid, data):
+    session = await sio.get_session(sid)
+    fila = mensajes_repo.borrar(data["id"], session["user_id"])
+    if fila:
+        await sio.emit("mensaje:borrado", {"id": fila["id"]}, room=fila["destinatario_id"])
+
+
 @sio.on("mensaje:leido")
 async def mensaje_leido(sid, data):
     session = await sio.get_session(sid)
     lector = usuarios_repo.buscar_por_id(session["user_id"])
-    filas = mensajes_repo.marcar_leido(data.get("ids", []))
+    filas = mensajes_repo.marcar_leido(data.get("ids", []), session["user_id"])
     if lector and not lector.get("mostrar_acuses", True):
         return
     for fila in filas:
