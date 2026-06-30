@@ -68,6 +68,8 @@ def bloquear(datos: BloquearIn, yo: str = Depends(usuario_actual)):
     if datos.user_id == yo:
         raise HTTPException(status_code=400, detail="No puedes bloquearte")
     repo.crear_bloqueo(yo, datos.user_id)
+    repo.eliminar_amistad(yo, datos.user_id)
+    mensajes_repo.limpiar_conversacion(yo, datos.user_id)
     return {"ok": True}
 
 
