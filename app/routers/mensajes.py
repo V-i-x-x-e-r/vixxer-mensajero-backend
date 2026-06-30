@@ -8,8 +8,8 @@ router = APIRouter(prefix="/mensajes", tags=["mensajes"])
 
 
 @router.get("/historial/{otro_id}")
-def historial(otro_id: str, yo: str = Depends(usuario_actual)):
-    return repo.conversacion(yo, otro_id)
+def historial(otro_id: str, antes: str = None, yo: str = Depends(usuario_actual)):
+    return repo.conversacion(yo, otro_id, antes=antes)
 
 
 @router.get("/conversaciones")
