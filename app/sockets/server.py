@@ -49,6 +49,8 @@ async def mensaje_enviar(sid, data):
     destinatario_id = data.get("destinatarioId")
     if not es_uuid(destinatario_id) or destinatario_id not in amigos_repo.ids_amigos(remitente_id):
         return {"ok": False, "error": "no_permitido"}
+    if amigos_repo.esta_bloqueado(destinatario_id, remitente_id):
+        return {"ok": False, "error": "bloqueado"}
     respuesta_a = data.get("respuestaA")
     fila = mensajes_repo.guardar({
         "remitente_id": remitente_id,
