@@ -170,11 +170,12 @@ def conversacion(usuario_a: str, usuario_b: str, limite: int = 50):
         supabase.table("mensajes")
         .select("*")
         .or_(filtro)
-        .order("enviado_en")
+        .order("enviado_en", desc=True)
         .limit(limite)
         .execute()
     )
+    filas = list(reversed(r.data))
     corte = _limpiezas_de(usuario_a).get(usuario_b)
     if corte:
-        return [m for m in r.data if m["enviado_en"] > corte]
-    return r.data
+        return [m for m in filas if m["enviado_en"] > corte]
+    return filas
