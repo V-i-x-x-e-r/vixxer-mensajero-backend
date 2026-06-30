@@ -42,17 +42,12 @@ def borrar(mensaje_id: str, remitente_id: str):
         return None
     r = (
         supabase.table("mensajes")
-        .select("id, destinatario_id")
+        .delete()
         .eq("id", mensaje_id)
         .eq("remitente_id", remitente_id)
-        .limit(1)
         .execute()
     )
-    if not r.data:
-        return None
-    fila = r.data[0]
-    supabase.table("mensajes").delete().eq("id", mensaje_id).eq("remitente_id", remitente_id).execute()
-    return fila
+    return r.data[0] if r.data else None
 
 
 def marcar_entregados_de(destinatario_id: str):
