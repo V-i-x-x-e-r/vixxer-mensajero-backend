@@ -5,6 +5,8 @@ from app.core.validar import es_uuid
 from app.db import mensajes as mensajes_repo
 from app.db import usuarios as usuarios_repo
 from app.db import amigos as amigos_repo
+from app.db import push as push_repo
+from app.core.push import enviar_push
 
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
 
@@ -56,6 +58,12 @@ async def mensaje_enviar(sid, data):
         "respuesta_a": respuesta_a if es_uuid(respuesta_a) else None,
     })
     await sio.emit("mensaje:recibido", fila, room=destinatario_id)
+    if not esta_en_linea(destinatario_id):
+        tokens = push_repo.tokens_de(destinatario_id)
+        if tokens:
+            remitente = usuarios_repo.buscar_por_id(remitente_id)
+            nombre = remitente["usuario"] if remitente else "Alguien"
+            await enviar_push(tokens, nombre, "Te envió un mensaje", {"de": remitente_id})
     return {"ok": True, "id": fila["id"]}
 
 
