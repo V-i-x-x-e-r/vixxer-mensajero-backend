@@ -1,5 +1,5 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class MediaIn(BaseModel):
-    datos: str
+    datos: str = Field(max_length=35_000_000)

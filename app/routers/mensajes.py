@@ -3,6 +3,8 @@ from pydantic import BaseModel
 
 from app.core.deps import usuario_actual
 from app.core.validar import es_uuid
+from app.core.limites import permitido
+from app.core.firma import verificar_firma
 from app.core.push import enviar_push
 from app.db import mensajes as repo
 from app.db import usuarios as usuarios_repo
@@ -19,6 +21,7 @@ class RelayEntrada(BaseModel):
     contenido_cifrado: str
     nonce: str
     cliente_id: str | None = None
+    firma: str | None = None
 
 
 @router.get("/historial/{otro_id}")
@@ -44,6 +47,8 @@ def borrar_conversacion(otro_id: str, yo: str = Depends(usuario_actual)):
 
 @router.post("/relay")
 async def relay(datos: RelayEntrada, yo: str = Depends(usuario_actual)):
+    if not permitido(f"relay:{yo}", maximo=60, ventana=60):
+        return {"ok": False, "error": "limite"}
     remitente_id = datos.remitente_id
     destinatario_id = datos.destinatario_id
     if not es_uuid(remitente_id) or not es_uuid(destinatario_id):
@@ -52,6 +57,10 @@ async def relay(datos: RelayEntrada, yo: str = Depends(usuario_actual)):
         return {"ok": False, "error": "no_amigos"}
     if amigos_repo.esta_bloqueado(destinatario_id, remitente_id):
         return {"ok": False, "error": "bloqueado"}
+    remitente = usuarios_repo.buscar_por_id(remitente_id)
+    mensaje = f"{remitente_id}|{destinatario_id}|{datos.contenido_cifrado}|{datos.nonce}|{datos.cliente_id or ''}"
+    if not remitente or not verificar_firma(mensaje, datos.firma, remitente.get("llave_firma")):
+        return {"ok": False, "error": "firma"}
     fila, creado = repo.guardar({
         "remitente_id": remitente_id,
         "destinatario_id": destinatario_id,
@@ -65,7 +74,6 @@ async def relay(datos: RelayEntrada, yo: str = Depends(usuario_actual)):
         if not esta_en_linea(destinatario_id):
             tokens = push_repo.tokens_de(destinatario_id)
             if tokens:
-                remitente = usuarios_repo.buscar_por_id(remitente_id)
-                nombre = remitente["usuario"] if remitente else "Alguien"
+                nombre = remitente["usuario"]
                 await enviar_push(tokens, nombre, "Te envió un mensaje", {"de": remitente_id})
     return {"ok": True, "id": fila["id"]}

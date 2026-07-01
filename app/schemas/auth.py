@@ -5,6 +5,7 @@ class RegistroIn(BaseModel):
     usuario: str = Field(min_length=3, max_length=20)
     contrasena: str = Field(min_length=6, max_length=100)
     llave_publica: str
+    llave_firma: str | None = None
 
 
 class LoginIn(BaseModel):

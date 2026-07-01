@@ -90,16 +90,21 @@ def marcar_leido(ids: list, lector_id: str):
 
 
 def reaccionar(mensaje_id: str, usuario_id: str, emoji: str):
+    if not es_uuid(mensaje_id) or not es_uuid(usuario_id):
+        return None
     r = (
         supabase.table("mensajes")
-        .select("reacciones")
+        .select("remitente_id, destinatario_id, reacciones")
         .eq("id", mensaje_id)
         .limit(1)
         .execute()
     )
     if not r.data:
         return None
-    reacciones = r.data[0].get("reacciones") or {}
+    fila = r.data[0]
+    if usuario_id not in (fila["remitente_id"], fila["destinatario_id"]):
+        return None
+    reacciones = fila.get("reacciones") or {}
     if reacciones.get(usuario_id) == emoji:
         reacciones.pop(usuario_id, None)
     else:

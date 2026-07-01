@@ -145,7 +145,10 @@ async def entregar_pendientes(sid, data=None):
 async def mensaje_reaccionar(sid, data):
     session = await sio.get_session(sid)
     usuario_id = session["user_id"]
-    fila = mensajes_repo.reaccionar(data["id"], usuario_id, data["emoji"])
+    emoji = data.get("emoji")
+    if not isinstance(emoji, str) or len(emoji) > 16:
+        return
+    fila = mensajes_repo.reaccionar(data.get("id"), usuario_id, emoji)
     if not fila:
         return
     carga = {"id": fila["id"], "reacciones": fila["reacciones"]}

@@ -1,4 +1,5 @@
 import base64
+import binascii
 import time
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -10,7 +11,7 @@ from app.db import push as push_repo
 from app.db.supabase import supabase
 from app.schemas.preferencias import PreferenciasIn
 from app.schemas.avatar import AvatarIn
-from app.schemas.llave import LlaveIn
+from app.schemas.llave import LlaveIn, FirmaIn
 from app.schemas.respaldo import RespaldoIn
 from app.schemas.push import PushTokenIn
 from app.sockets.server import esta_en_linea
@@ -37,6 +38,12 @@ def mi_codigo(yo: str = Depends(usuario_actual)):
 @router.put("/llave-publica")
 def actualizar_llave(datos: LlaveIn, yo: str = Depends(usuario_actual)):
     repo.actualizar(yo, {"llave_publica": datos.llave_publica})
+    return {"ok": True}
+
+
+@router.put("/llave-firma")
+def actualizar_llave_firma(datos: FirmaIn, yo: str = Depends(usuario_actual)):
+    repo.actualizar(yo, {"llave_firma": datos.llave_firma})
     return {"ok": True}
 
 
@@ -70,7 +77,10 @@ def obtener_respaldo(yo: str = Depends(usuario_actual)):
 
 @router.post("/avatar")
 def subir_avatar(datos: AvatarIn, yo: str = Depends(usuario_actual)):
-    crudo = base64.b64decode(datos.imagen)
+    try:
+        crudo = base64.b64decode(datos.imagen, validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=400, detail="Imagen inválida")
     path = f"{yo}/{int(time.time())}.jpg"
     supabase.storage.from_("Avatares").upload(path, crudo, {"content-type": datos.tipo or "image/jpeg"})
     url = supabase.storage.from_("Avatares").get_public_url(path)
