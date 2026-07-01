@@ -18,6 +18,7 @@ class RelayEntrada(BaseModel):
     destinatario_id: str
     contenido_cifrado: str
     nonce: str
+    cliente_id: str | None = None
 
 
 @router.get("/historial/{otro_id}")
@@ -51,18 +52,20 @@ async def relay(datos: RelayEntrada, yo: str = Depends(usuario_actual)):
         return {"ok": False, "error": "no_amigos"}
     if amigos_repo.esta_bloqueado(destinatario_id, remitente_id):
         return {"ok": False, "error": "bloqueado"}
-    fila = repo.guardar({
+    fila, creado = repo.guardar({
         "remitente_id": remitente_id,
         "destinatario_id": destinatario_id,
         "contenido_cifrado": datos.contenido_cifrado,
         "nonce": datos.nonce,
         "respuesta_a": None,
+        "cliente_id": datos.cliente_id,
     })
-    await sio.emit("mensaje:recibido", fila, room=destinatario_id)
-    if not esta_en_linea(destinatario_id):
-        tokens = push_repo.tokens_de(destinatario_id)
-        if tokens:
-            remitente = usuarios_repo.buscar_por_id(remitente_id)
-            nombre = remitente["usuario"] if remitente else "Alguien"
-            await enviar_push(tokens, nombre, "Te envió un mensaje", {"de": remitente_id})
+    if creado:
+        await sio.emit("mensaje:recibido", fila, room=destinatario_id)
+        if not esta_en_linea(destinatario_id):
+            tokens = push_repo.tokens_de(destinatario_id)
+            if tokens:
+                remitente = usuarios_repo.buscar_por_id(remitente_id)
+                nombre = remitente["usuario"] if remitente else "Alguien"
+                await enviar_push(tokens, nombre, "Te envió un mensaje", {"de": remitente_id})
     return {"ok": True, "id": fila["id"]}

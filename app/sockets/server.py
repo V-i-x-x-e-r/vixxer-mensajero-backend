@@ -52,20 +52,22 @@ async def mensaje_enviar(sid, data):
     if amigos_repo.esta_bloqueado(destinatario_id, remitente_id):
         return {"ok": False, "error": "bloqueado"}
     respuesta_a = data.get("respuestaA")
-    fila = mensajes_repo.guardar({
+    fila, creado = mensajes_repo.guardar({
         "remitente_id": remitente_id,
         "destinatario_id": destinatario_id,
         "contenido_cifrado": data["contenidoCifrado"],
         "nonce": data["nonce"],
         "respuesta_a": respuesta_a if es_uuid(respuesta_a) else None,
+        "cliente_id": data.get("clienteId"),
     })
-    await sio.emit("mensaje:recibido", fila, room=destinatario_id)
-    if not esta_en_linea(destinatario_id):
-        tokens = push_repo.tokens_de(destinatario_id)
-        if tokens:
-            remitente = usuarios_repo.buscar_por_id(remitente_id)
-            nombre = remitente["usuario"] if remitente else "Alguien"
-            await enviar_push(tokens, nombre, "Te envió un mensaje", {"de": remitente_id})
+    if creado:
+        await sio.emit("mensaje:recibido", fila, room=destinatario_id)
+        if not esta_en_linea(destinatario_id):
+            tokens = push_repo.tokens_de(destinatario_id)
+            if tokens:
+                remitente = usuarios_repo.buscar_por_id(remitente_id)
+                nombre = remitente["usuario"] if remitente else "Alguien"
+                await enviar_push(tokens, nombre, "Te envió un mensaje", {"de": remitente_id})
     return {"ok": True, "id": fila["id"]}
 
 

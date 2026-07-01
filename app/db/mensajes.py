@@ -5,8 +5,19 @@ from app.core.validar import es_uuid
 
 
 def guardar(datos: dict):
+    cliente_id = datos.get("cliente_id")
+    if cliente_id:
+        previo = (
+            supabase.table("mensajes")
+            .select("*")
+            .eq("cliente_id", cliente_id)
+            .limit(1)
+            .execute()
+        )
+        if previo.data:
+            return previo.data[0], False
     r = supabase.table("mensajes").insert(datos).execute()
-    return r.data[0]
+    return r.data[0], True
 
 
 def marcar_entregado(mensaje_id: str, destinatario_id: str):
