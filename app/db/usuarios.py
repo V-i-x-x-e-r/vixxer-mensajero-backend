@@ -2,11 +2,6 @@ from datetime import datetime, timezone
 
 from app.db.supabase import supabase
 
-CAMPOS_PUBLICOS = (
-    "id, usuario, llave_publica, llave_firma, ultima_conexion, creado_en, avatar_url, "
-    "codigo, respaldo_cifrado, respaldo_nonce, respaldo_salt, mostrar_conexion, mostrar_acuses"
-)
-
 
 def buscar_por_usuario(usuario: str):
     r = supabase.table("usuarios").select("*").eq("usuario", usuario).limit(1).execute()
@@ -14,7 +9,7 @@ def buscar_por_usuario(usuario: str):
 
 
 def buscar_por_id(uid: str):
-    r = supabase.table("usuarios").select(CAMPOS_PUBLICOS).eq("id", uid).limit(1).execute()
+    r = supabase.table("usuarios").select("*").eq("id", uid).limit(1).execute()
     return r.data[0] if r.data else None
 
 
