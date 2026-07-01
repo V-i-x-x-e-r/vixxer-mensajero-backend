@@ -16,7 +16,7 @@ def crear_token(usuario_id: str) -> str:
 def leer_token(token: str) -> str | None:
     try:
         datos = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALG])
-        return datos["sub"]
+        return datos.get("sub")
     except JWTError:
         return None
 

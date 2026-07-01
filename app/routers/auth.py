@@ -1,16 +1,26 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 
 from app.schemas.auth import RegistroIn, LoginIn
 from app.core.security import hashear_password, verificar_password, crear_token
 from app.core.codigo import generar_codigo
 from app.core.deps import usuario_actual
+from app.core.limites import permitido
 from app.db import usuarios as repo
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _ip(request: Request) -> str:
+    reenviado = request.headers.get("x-forwarded-for")
+    if reenviado:
+        return reenviado.split(",")[0].strip()
+    return request.client.host if request.client else "?"
+
+
 @router.post("/register", status_code=201)
-def register(datos: RegistroIn):
+def register(datos: RegistroIn, request: Request):
+    if not permitido(f"register:{_ip(request)}", maximo=5, ventana=3600):
+        raise HTTPException(status_code=429, detail="Demasiados intentos, espera un momento")
     if repo.buscar_por_usuario(datos.usuario):
         raise HTTPException(status_code=409, detail="Ese usuario ya existe")
     codigo = generar_codigo()
@@ -20,13 +30,16 @@ def register(datos: RegistroIn):
         "usuario": datos.usuario,
         "clave_hash": hashear_password(datos.contrasena),
         "llave_publica": datos.llave_publica,
+        "llave_firma": datos.llave_firma,
         "codigo": codigo,
     })
     return {"id": nuevo["id"], "usuario": nuevo["usuario"], "codigo": codigo}
 
 
 @router.post("/login")
-def login(datos: LoginIn):
+def login(datos: LoginIn, request: Request):
+    if not permitido(f"login:{_ip(request)}", maximo=20, ventana=900) or not permitido(f"login:{datos.usuario.lower()}", maximo=10, ventana=900):
+        raise HTTPException(status_code=429, detail="Demasiados intentos, espera un momento")
     user = repo.buscar_por_usuario(datos.usuario)
     if not user or not verificar_password(datos.contrasena, user["clave_hash"]):
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")

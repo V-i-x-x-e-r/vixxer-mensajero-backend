@@ -36,10 +36,4 @@ def version():
     return {"version": "0.1.0"}
 
 
-@app.get("/db-ping")
-def db_ping():
-    from app.db.usuarios import buscar_por_usuario
-    return {"ok": buscar_por_usuario("nadie") is None}
-
-
 asgi = socketio.ASGIApp(sio, other_asgi_app=app)
