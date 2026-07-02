@@ -44,6 +44,14 @@ def historial(grupo_id: str, antes: str = None, yo: str = Depends(usuario_actual
     return repo.historial(grupo_id, yo, antes=antes)
 
 
+@router.post("/{grupo_id}/salir")
+def salir(grupo_id: str, yo: str = Depends(usuario_actual)):
+    if not repo.es_miembro(grupo_id, yo):
+        raise HTTPException(status_code=403, detail="No eres miembro")
+    repo.salir(grupo_id, yo)
+    return {"ok": True}
+
+
 @router.post("/{grupo_id}/mensajes")
 async def enviar(grupo_id: str, datos: MensajeGrupo, yo: str = Depends(usuario_actual)):
     if not permitido(f"grupo:{yo}", maximo=120, ventana=60):

@@ -33,6 +33,12 @@ def miembros_ids(grupo_id: str):
     return [x["usuario_id"] for x in r.data]
 
 
+def salir(grupo_id: str, usuario_id: str):
+    if not es_uuid(grupo_id) or not es_uuid(usuario_id):
+        return
+    supabase.table("grupo_miembros").delete().eq("grupo_id", grupo_id).eq("usuario_id", usuario_id).execute()
+
+
 def grupos_de(usuario_id: str):
     if not es_uuid(usuario_id):
         return []
