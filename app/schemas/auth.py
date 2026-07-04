@@ -13,6 +13,11 @@ class LoginIn(BaseModel):
     contrasena: str
 
 
+class CambiarContrasenaIn(BaseModel):
+    actual: str
+    nueva: str = Field(min_length=6, max_length=100)
+
+
 class UsuarioOut(BaseModel):
     id: str
     usuario: str

@@ -31,15 +31,3 @@ def marcar_desconexion(uid: str):
 def buscar_por_codigo(codigo: str):
     r = supabase.table("usuarios").select("id, usuario, llave_publica").eq("codigo", codigo).limit(1).execute()
     return r.data[0] if r.data else None
-
-
-def buscar(q: str, excepto_id: str, limite: int = 20):
-    r = (
-        supabase.table("usuarios")
-        .select("id, usuario, llave_publica, avatar_url")
-        .ilike("usuario", f"%{q}%")
-        .neq("id", excepto_id)
-        .limit(limite)
-        .execute()
-    )
-    return r.data

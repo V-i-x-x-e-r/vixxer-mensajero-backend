@@ -2,6 +2,7 @@ import socketio
 
 from app.core.security import leer_token
 from app.core.validar import es_uuid
+from app.core.limites import permitido
 from app.db import mensajes as mensajes_repo
 from app.db import usuarios as usuarios_repo
 from app.db import amigos as amigos_repo
@@ -46,6 +47,8 @@ async def disconnect(sid):
 async def mensaje_enviar(sid, data):
     session = await sio.get_session(sid)
     remitente_id = session["user_id"]
+    if not permitido(f"msg:{remitente_id}", maximo=60, ventana=60):
+        return {"ok": False, "error": "limite"}
     destinatario_id = data.get("destinatarioId")
     if not es_uuid(destinatario_id) or destinatario_id not in amigos_repo.ids_amigos(remitente_id):
         return {"ok": False, "error": "no_permitido"}
@@ -75,10 +78,13 @@ async def mensaje_enviar(sid, data):
 async def usuario_escribiendo(sid, data):
     session = await sio.get_session(sid)
     de = session["user_id"]
+    para = data.get("para")
+    if not es_uuid(para):
+        return
     await sio.emit(
         "usuario:escribiendo",
         {"de": de, "activo": bool(data.get("activo"))},
-        room=data["para"],
+        room=para,
     )
 
 

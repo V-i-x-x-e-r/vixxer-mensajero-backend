@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 
-from app.schemas.auth import RegistroIn, LoginIn
+from app.schemas.auth import RegistroIn, LoginIn, CambiarContrasenaIn
 from app.core.security import hashear_password, verificar_password, crear_token
 from app.core.codigo import generar_codigo
 from app.core.deps import usuario_actual
@@ -45,6 +45,17 @@ def login(datos: LoginIn, request: Request):
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
     token = crear_token(user["id"])
     return {"token": token, "usuario": {"id": user["id"], "usuario": user["usuario"]}}
+
+
+@router.post("/cambiar-contrasena")
+def cambiar_contrasena(datos: CambiarContrasenaIn, yo: str = Depends(usuario_actual)):
+    if not permitido(f"cambiar:{yo}", maximo=5, ventana=900):
+        raise HTTPException(status_code=429, detail="Demasiados intentos, espera un momento")
+    user = repo.buscar_por_id(yo)
+    if not user or not verificar_password(datos.actual, user["clave_hash"]):
+        raise HTTPException(status_code=400, detail="La contraseña actual no es correcta")
+    repo.actualizar(yo, {"clave_hash": hashear_password(datos.nueva)})
+    return {"ok": True}
 
 
 @router.get("/me")

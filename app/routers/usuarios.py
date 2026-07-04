@@ -19,14 +19,6 @@ from app.sockets.server import esta_en_linea
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
 
-@router.get("/buscar")
-def buscar(q: str = "", yo: str = Depends(usuario_actual)):
-    q = q.strip()
-    if len(q) < 1:
-        return []
-    return repo.buscar(q, yo)
-
-
 @router.get("/mi-codigo")
 def mi_codigo(yo: str = Depends(usuario_actual)):
     user = repo.buscar_por_id(yo)
