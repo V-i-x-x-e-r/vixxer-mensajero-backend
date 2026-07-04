@@ -31,11 +31,13 @@ def historial(otro_id: str, antes: str = None, yo: str = Depends(usuario_actual)
 
 @router.get("/conversaciones")
 def conversaciones(yo: str = Depends(usuario_actual)):
+    convs = repo.conversaciones(yo)
+    usuarios = usuarios_repo.por_ids([c["otro_id"] for c in convs])
     salida = []
-    for c in repo.conversaciones(yo):
-        u = usuarios_repo.buscar_por_id(c["otro_id"])
+    for c in convs:
+        u = usuarios.get(c["otro_id"])
         if u:
-            salida.append({**c, "usuario": u["usuario"], "avatar_url": u.get("avatar_url")})
+            salida.append({**c, "usuario": u["usuario"], "avatar_url": u.get("avatar_url"), "llave_publica": u["llave_publica"]})
     return salida
 
 

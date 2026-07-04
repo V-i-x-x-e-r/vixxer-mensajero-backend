@@ -27,9 +27,11 @@ def solicitar(datos: SolicitarIn, yo: str = Depends(usuario_actual)):
 
 @router.get("/solicitudes")
 def solicitudes(yo: str = Depends(usuario_actual)):
+    pendientes = repo.pendientes(yo)
+    usuarios = usuarios_repo.por_ids([s["de_id"] for s in pendientes])
     salida = []
-    for s in repo.pendientes(yo):
-        u = usuarios_repo.buscar_por_id(s["de_id"])
+    for s in pendientes:
+        u = usuarios.get(s["de_id"])
         if u:
             salida.append({"id": s["id"], "usuario": u["usuario"], "codigo": u.get("codigo")})
     return salida
@@ -55,12 +57,11 @@ def rechazar(datos: AccionIn, yo: str = Depends(usuario_actual)):
 
 @router.get("")
 def lista(yo: str = Depends(usuario_actual)):
-    salida = []
-    for uid in repo.ids_amigos(yo):
-        u = usuarios_repo.buscar_por_id(uid)
-        if u:
-            salida.append({"id": u["id"], "usuario": u["usuario"], "llave_publica": u["llave_publica"], "avatar_url": u.get("avatar_url")})
-    return salida
+    usuarios = usuarios_repo.por_ids(repo.ids_amigos(yo))
+    return [
+        {"id": u["id"], "usuario": u["usuario"], "llave_publica": u["llave_publica"], "avatar_url": u.get("avatar_url")}
+        for u in usuarios.values()
+    ]
 
 
 @router.post("/bloquear")
@@ -75,12 +76,11 @@ def bloquear(datos: BloquearIn, yo: str = Depends(usuario_actual)):
 
 @router.get("/bloqueados")
 def bloqueados(yo: str = Depends(usuario_actual)):
-    salida = []
-    for uid in repo.bloqueados_de(yo):
-        u = usuarios_repo.buscar_por_id(uid)
-        if u:
-            salida.append({"id": u["id"], "usuario": u["usuario"], "avatar_url": u.get("avatar_url")})
-    return salida
+    usuarios = usuarios_repo.por_ids(repo.bloqueados_de(yo))
+    return [
+        {"id": u["id"], "usuario": u["usuario"], "avatar_url": u.get("avatar_url")}
+        for u in usuarios.values()
+    ]
 
 
 @router.post("/desbloquear")

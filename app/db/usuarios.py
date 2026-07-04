@@ -13,6 +13,18 @@ def buscar_por_id(uid: str):
     return r.data[0] if r.data else None
 
 
+def por_ids(ids: list):
+    if not ids:
+        return {}
+    r = (
+        supabase.table("usuarios")
+        .select("id, usuario, llave_publica, avatar_url, codigo")
+        .in_("id", ids)
+        .execute()
+    )
+    return {u["id"]: u for u in r.data}
+
+
 def crear(datos: dict):
     r = supabase.table("usuarios").insert(datos).execute()
     return r.data[0]
