@@ -160,3 +160,61 @@ async def mensaje_reaccionar(sid, data):
     carga = {"id": fila["id"], "reacciones": fila["reacciones"]}
     await sio.emit("mensaje:reaccion", carga, room=fila["remitente_id"])
     await sio.emit("mensaje:reaccion", carga, room=fila["destinatario_id"])
+
+
+@sio.on("llamada:ofrecer")
+async def llamada_ofrecer(sid, data):
+    session = await sio.get_session(sid)
+    de = session["user_id"]
+    para = data.get("para")
+    if not permitido(f"llamada:{de}", maximo=20, ventana=60):
+        return {"ok": False, "error": "limite"}
+    if not es_uuid(para) or para not in amigos_repo.ids_amigos(de):
+        return {"ok": False, "error": "no_permitido"}
+    if amigos_repo.esta_bloqueado(para, de):
+        return {"ok": False, "error": "bloqueado"}
+    remitente = usuarios_repo.buscar_por_id(de)
+    carga = {
+        "de": de,
+        "usuario": remitente["usuario"] if remitente else "",
+        "sdp": data.get("sdp"),
+        "video": bool(data.get("video")),
+    }
+    await sio.emit("llamada:ofrecer", carga, room=para)
+    if not esta_en_linea(para):
+        tokens = push_repo.tokens_de(para)
+        if tokens:
+            nombre = remitente["usuario"] if remitente else "Alguien"
+            await enviar_push(tokens, nombre, "Llamada entrante", {"de": de})
+        return {"ok": True, "en_linea": False}
+    return {"ok": True, "en_linea": True}
+
+
+@sio.on("llamada:contestar")
+async def llamada_contestar(sid, data):
+    session = await sio.get_session(sid)
+    de = session["user_id"]
+    para = data.get("para")
+    if not es_uuid(para) or para not in amigos_repo.ids_amigos(de):
+        return
+    await sio.emit("llamada:contestar", {"de": de, "sdp": data.get("sdp")}, room=para)
+
+
+@sio.on("llamada:ice")
+async def llamada_ice(sid, data):
+    session = await sio.get_session(sid)
+    de = session["user_id"]
+    para = data.get("para")
+    if not es_uuid(para) or not permitido(f"ice:{de}", maximo=200, ventana=60):
+        return
+    await sio.emit("llamada:ice", {"de": de, "candidato": data.get("candidato")}, room=para)
+
+
+@sio.on("llamada:colgar")
+async def llamada_colgar(sid, data):
+    session = await sio.get_session(sid)
+    de = session["user_id"]
+    para = data.get("para")
+    if not es_uuid(para):
+        return
+    await sio.emit("llamada:colgar", {"de": de}, room=para)
