@@ -51,10 +51,54 @@ def grupos_de(usuario_id: str):
     m = supabase.table("grupo_miembros").select("grupo_id").in_("grupo_id", ids).execute()
     for x in m.data:
         conteos[x["grupo_id"]] = conteos.get(x["grupo_id"], 0) + 1
+    ultimos = _ultimos_mensajes(ids, usuario_id)
     salida = []
     for grupo in g.data:
-        salida.append({**grupo, "miembros": conteos.get(grupo["id"], 0)})
-    salida.sort(key=lambda x: x.get("creado_en") or "", reverse=True)
+        salida.append({**grupo, "miembros": conteos.get(grupo["id"], 0), "ultimo": ultimos.get(grupo["id"])})
+    salida.sort(key=lambda x: (x["ultimo"]["enviado_en"] if x["ultimo"] else x.get("creado_en")) or "", reverse=True)
+    return salida
+
+
+def _ultimos_mensajes(grupo_ids: list, usuario_id: str):
+    msgs = (
+        supabase.table("mensajes_grupo")
+        .select("*")
+        .in_("grupo_id", grupo_ids)
+        .order("enviado_en", desc=True)
+        .limit(200)
+        .execute()
+    )
+    ultimos = {}
+    for msg in msgs.data:
+        if msg["grupo_id"] not in ultimos:
+            ultimos[msg["grupo_id"]] = msg
+    if not ultimos:
+        return {}
+    cif = (
+        supabase.table("mensajes_grupo_cifrados")
+        .select("*")
+        .in_("mensaje_id", [msg["id"] for msg in ultimos.values()])
+        .eq("destinatario_id", usuario_id)
+        .execute()
+    )
+    cifrados = {x["mensaje_id"]: x for x in cif.data}
+    rem_ids = list({msg["remitente_id"] for msg in ultimos.values()})
+    us = supabase.table("usuarios").select("id, usuario, llave_publica").in_("id", rem_ids).execute()
+    remitentes = {u["id"]: u for u in us.data}
+    salida = {}
+    for grupo_id, msg in ultimos.items():
+        c = cifrados.get(msg["id"])
+        rem = remitentes.get(msg["remitente_id"])
+        if not c or not rem:
+            continue
+        salida[grupo_id] = {
+            "enviado_en": msg["enviado_en"],
+            "remitente_id": msg["remitente_id"],
+            "remitente": rem["usuario"],
+            "llave_publica": rem["llave_publica"],
+            "contenido_cifrado": c["contenido_cifrado"],
+            "nonce": c["nonce"],
+        }
     return salida
 
 

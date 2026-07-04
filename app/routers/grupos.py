@@ -15,10 +15,18 @@ router = APIRouter(prefix="/grupos", tags=["grupos"])
 
 
 @router.post("", status_code=201)
-def crear(datos: CrearGrupo, yo: str = Depends(usuario_actual)):
+async def crear(datos: CrearGrupo, yo: str = Depends(usuario_actual)):
     amigos = set(amigos_repo.ids_amigos(yo))
     miembros = [m for m in datos.miembros if es_uuid(m) and m in amigos and m != yo]
     grupo = repo.crear(datos.nombre.strip(), yo, miembros)
+    creador = usuarios_repo.buscar_por_id(yo)
+    nombre = creador["usuario"] if creador else "Alguien"
+    for uid in miembros:
+        await sio.emit("grupo:nuevo", {"id": grupo["id"], "nombre": grupo["nombre"]}, room=uid)
+        if not esta_en_linea(uid):
+            tokens = push_repo.tokens_de(uid)
+            if tokens:
+                await enviar_push(tokens, grupo["nombre"], f"{nombre} te agregó al grupo", {"grupo": grupo["id"]})
     return grupo
 
 

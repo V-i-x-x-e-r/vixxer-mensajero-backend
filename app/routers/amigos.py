@@ -73,6 +73,22 @@ def bloquear(datos: BloquearIn, yo: str = Depends(usuario_actual)):
     return {"ok": True}
 
 
+@router.get("/bloqueados")
+def bloqueados(yo: str = Depends(usuario_actual)):
+    salida = []
+    for uid in repo.bloqueados_de(yo):
+        u = usuarios_repo.buscar_por_id(uid)
+        if u:
+            salida.append({"id": u["id"], "usuario": u["usuario"], "avatar_url": u.get("avatar_url")})
+    return salida
+
+
+@router.post("/desbloquear")
+def desbloquear(datos: BloquearIn, yo: str = Depends(usuario_actual)):
+    repo.quitar_bloqueo(yo, datos.user_id)
+    return {"ok": True}
+
+
 @router.delete("/{otro_id}")
 def eliminar(otro_id: str, yo: str = Depends(usuario_actual)):
     repo.eliminar_amistad(yo, otro_id)

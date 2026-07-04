@@ -86,3 +86,21 @@ def esta_bloqueado(usuario_id: str, bloqueado_id: str):
         .execute()
     )
     return bool(r.data)
+
+
+def bloqueados_de(usuario_id: str):
+    if not es_uuid(usuario_id):
+        return []
+    r = (
+        supabase.table("bloqueos")
+        .select("bloqueado_id")
+        .eq("usuario_id", usuario_id)
+        .execute()
+    )
+    return [x["bloqueado_id"] for x in r.data]
+
+
+def quitar_bloqueo(usuario_id: str, bloqueado_id: str):
+    if not es_uuid(usuario_id) or not es_uuid(bloqueado_id):
+        return
+    supabase.table("bloqueos").delete().eq("usuario_id", usuario_id).eq("bloqueado_id", bloqueado_id).execute()
