@@ -5,11 +5,10 @@ from app.core.validar import es_uuid
 def crear(nombre: str, creador_id: str, miembros: list):
     r = supabase.table("grupos").insert({"nombre": nombre, "creador_id": creador_id}).execute()
     grupo = r.data[0]
-    ids = {creador_id}
+    filas = [{"grupo_id": grupo["id"], "usuario_id": creador_id, "rol": "admin"}]
     for uid in miembros:
-        if es_uuid(uid):
-            ids.add(uid)
-    filas = [{"grupo_id": grupo["id"], "usuario_id": uid} for uid in ids]
+        if es_uuid(uid) and uid != creador_id:
+            filas.append({"grupo_id": grupo["id"], "usuario_id": uid, "rol": "miembro"})
     supabase.table("grupo_miembros").insert(filas).execute()
     return grupo
 
@@ -28,15 +27,77 @@ def es_miembro(grupo_id: str, usuario_id: str) -> bool:
     return bool(r.data)
 
 
+def es_admin(grupo_id: str, usuario_id: str) -> bool:
+    if not es_uuid(grupo_id) or not es_uuid(usuario_id):
+        return False
+    r = (
+        supabase.table("grupo_miembros")
+        .select("rol")
+        .eq("grupo_id", grupo_id)
+        .eq("usuario_id", usuario_id)
+        .limit(1)
+        .execute()
+    )
+    return bool(r.data) and r.data[0].get("rol") == "admin"
+
+
 def miembros_ids(grupo_id: str):
     r = supabase.table("grupo_miembros").select("usuario_id").eq("grupo_id", grupo_id).execute()
     return [x["usuario_id"] for x in r.data]
 
 
-def salir(grupo_id: str, usuario_id: str):
+def agregar_miembros(grupo_id: str, ids: list):
+    actuales = set(miembros_ids(grupo_id))
+    filas = [
+        {"grupo_id": grupo_id, "usuario_id": uid, "rol": "miembro"}
+        for uid in ids
+        if es_uuid(uid) and uid not in actuales
+    ]
+    if filas:
+        supabase.table("grupo_miembros").insert(filas).execute()
+    return [f["usuario_id"] for f in filas]
+
+
+def quitar_miembro(grupo_id: str, usuario_id: str):
     if not es_uuid(grupo_id) or not es_uuid(usuario_id):
         return
     supabase.table("grupo_miembros").delete().eq("grupo_id", grupo_id).eq("usuario_id", usuario_id).execute()
+
+
+def cambiar_rol(grupo_id: str, usuario_id: str, rol: str):
+    if not es_uuid(grupo_id) or not es_uuid(usuario_id):
+        return
+    supabase.table("grupo_miembros").update({"rol": rol}).eq("grupo_id", grupo_id).eq("usuario_id", usuario_id).execute()
+
+
+def actualizar(grupo_id: str, datos: dict):
+    r = supabase.table("grupos").update(datos).eq("id", grupo_id).execute()
+    return r.data[0] if r.data else None
+
+
+def salir(grupo_id: str, usuario_id: str):
+    if not es_uuid(grupo_id) or not es_uuid(usuario_id):
+        return
+    quitar_miembro(grupo_id, usuario_id)
+    g = supabase.table("grupos").select("creador_id").eq("id", grupo_id).limit(1).execute()
+    if not g.data:
+        return
+    restantes = (
+        supabase.table("grupo_miembros")
+        .select("usuario_id, rol, agregado_en")
+        .eq("grupo_id", grupo_id)
+        .order("agregado_en")
+        .execute()
+    )
+    if not restantes.data:
+        supabase.table("grupos").delete().eq("id", grupo_id).execute()
+        return
+    if g.data[0]["creador_id"] != usuario_id:
+        return
+    admins = [m for m in restantes.data if m.get("rol") == "admin"]
+    heredero = (admins or restantes.data)[0]["usuario_id"]
+    supabase.table("grupos").update({"creador_id": heredero}).eq("id", grupo_id).execute()
+    cambiar_rol(grupo_id, heredero, "admin")
 
 
 def grupos_de(usuario_id: str):
@@ -98,6 +159,7 @@ def _ultimos_mensajes(grupo_ids: list, usuario_id: str):
             "llave_publica": rem["llave_publica"],
             "contenido_cifrado": c["contenido_cifrado"],
             "nonce": c["nonce"],
+            "borrado": msg.get("borrado", False),
         }
     return salida
 
@@ -109,16 +171,27 @@ def info(grupo_id: str):
     if not r.data:
         return None
     grupo = r.data[0]
-    ids = miembros_ids(grupo_id)
+    filas = (
+        supabase.table("grupo_miembros")
+        .select("usuario_id, rol, agregado_en")
+        .eq("grupo_id", grupo_id)
+        .order("agregado_en")
+        .execute()
+    )
+    roles = {x["usuario_id"]: x.get("rol", "miembro") for x in filas.data}
+    ids = list(roles.keys())
+    grupo["miembros"] = []
     if ids:
         us = supabase.table("usuarios").select("id, usuario, llave_publica, avatar_url").in_("id", ids).execute()
-        grupo["miembros"] = us.data
-    else:
-        grupo["miembros"] = []
+        por_id = {u["id"]: u for u in us.data}
+        for x in filas.data:
+            u = por_id.get(x["usuario_id"])
+            if u:
+                grupo["miembros"].append({**u, "rol": roles[u["id"]]})
     return grupo
 
 
-def guardar_mensaje(grupo_id: str, remitente_id: str, cliente_id, cifrados: list):
+def guardar_mensaje(grupo_id: str, remitente_id: str, cliente_id, cifrados: list, respuesta_a=None):
     if cliente_id:
         previo = (
             supabase.table("mensajes_grupo")
@@ -132,7 +205,12 @@ def guardar_mensaje(grupo_id: str, remitente_id: str, cliente_id, cifrados: list
             return previo.data[0], False
     r = (
         supabase.table("mensajes_grupo")
-        .insert({"grupo_id": grupo_id, "remitente_id": remitente_id, "cliente_id": cliente_id})
+        .insert({
+            "grupo_id": grupo_id,
+            "remitente_id": remitente_id,
+            "cliente_id": cliente_id,
+            "respuesta_a": respuesta_a if es_uuid(respuesta_a) else None,
+        })
         .execute()
     )
     msg = r.data[0]
@@ -149,6 +227,61 @@ def guardar_mensaje(grupo_id: str, remitente_id: str, cliente_id, cifrados: list
     if filas:
         supabase.table("mensajes_grupo_cifrados").insert(filas).execute()
     return msg, True
+
+
+def mensaje_por_id(mensaje_id: str):
+    if not es_uuid(mensaje_id):
+        return None
+    r = supabase.table("mensajes_grupo").select("*").eq("id", mensaje_id).limit(1).execute()
+    return r.data[0] if r.data else None
+
+
+def reaccionar(mensaje_id: str, usuario_id: str, emoji: str):
+    fila = mensaje_por_id(mensaje_id)
+    if not fila:
+        return None
+    reacciones = fila.get("reacciones") or {}
+    if reacciones.get(usuario_id) == emoji:
+        reacciones.pop(usuario_id, None)
+    else:
+        reacciones[usuario_id] = emoji
+    u = supabase.table("mensajes_grupo").update({"reacciones": reacciones}).eq("id", mensaje_id).execute()
+    return u.data[0] if u.data else None
+
+
+def borrar_mensaje(mensaje_id: str, remitente_id: str):
+    if not es_uuid(mensaje_id) or not es_uuid(remitente_id):
+        return None
+    r = (
+        supabase.table("mensajes_grupo")
+        .update({"borrado": True})
+        .eq("id", mensaje_id)
+        .eq("remitente_id", remitente_id)
+        .execute()
+    )
+    return r.data[0] if r.data else None
+
+
+def editar_mensaje(mensaje_id: str, remitente_id: str, cifrados: list):
+    fila = mensaje_por_id(mensaje_id)
+    if not fila or fila["remitente_id"] != remitente_id or fila.get("borrado"):
+        return None
+    filas = [
+        {
+            "mensaje_id": mensaje_id,
+            "destinatario_id": c.get("destinatario_id"),
+            "contenido_cifrado": c.get("contenido_cifrado"),
+            "nonce": c.get("nonce"),
+        }
+        for c in cifrados
+        if es_uuid(c.get("destinatario_id"))
+    ]
+    if not filas:
+        return None
+    supabase.table("mensajes_grupo_cifrados").delete().eq("mensaje_id", mensaje_id).execute()
+    supabase.table("mensajes_grupo_cifrados").insert(filas).execute()
+    r = supabase.table("mensajes_grupo").update({"editado": True}).eq("id", mensaje_id).execute()
+    return r.data[0] if r.data else None
 
 
 def historial(grupo_id: str, usuario_id: str, antes: str = None, limite: int = 50):
@@ -187,6 +320,10 @@ def historial(grupo_id: str, usuario_id: str, antes: str = None, limite: int = 5
             "remitente_id": m["remitente_id"],
             "cliente_id": m.get("cliente_id"),
             "enviado_en": m["enviado_en"],
+            "respuesta_a": m.get("respuesta_a"),
+            "reacciones": m.get("reacciones") or {},
+            "borrado": m.get("borrado", False),
+            "editado": m.get("editado", False),
             "contenido_cifrado": cif["contenido_cifrado"],
             "nonce": cif["nonce"],
         })
