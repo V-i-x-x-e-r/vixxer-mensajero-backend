@@ -168,6 +168,8 @@ def conversaciones(usuario_id: str, limite: int = 300):
             "ultimo_cifrado": ultimo["contenido_cifrado"],
             "ultimo_nonce": ultimo["nonce"],
             "ultimo_remitente_id": ultimo["remitente_id"],
+            "ultimo_entregado_en": ultimo.get("entregado_en"),
+            "ultimo_leido_en": ultimo.get("leido_en"),
             "enviado_en": ultimo["enviado_en"],
             "no_leidos": no_leidos.get(otro, 0),
         })
