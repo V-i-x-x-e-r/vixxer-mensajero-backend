@@ -4,6 +4,7 @@ from app.core.security import leer_token
 from app.core.validar import es_uuid
 from app.core.limites import permitido
 from app.db import mensajes as mensajes_repo
+from app.db import grupos as grupos_repo
 from app.db import usuarios as usuarios_repo
 from app.db import amigos as amigos_repo
 from app.db import push as push_repo
@@ -86,6 +87,22 @@ async def usuario_escribiendo(sid, data):
         {"de": de, "activo": bool(data.get("activo"))},
         room=para,
     )
+
+
+@sio.on("grupo:escribiendo")
+async def grupo_escribiendo(sid, data):
+    session = await sio.get_session(sid)
+    de = session["user_id"]
+    grupo_id = data.get("grupo")
+    if not es_uuid(grupo_id) or not grupos_repo.es_miembro(grupo_id, de):
+        return
+    for uid in grupos_repo.miembros_ids(grupo_id):
+        if uid != de:
+            await sio.emit(
+                "grupo:escribiendo",
+                {"grupo": grupo_id, "de": de, "activo": bool(data.get("activo"))},
+                room=uid,
+            )
 
 
 @sio.on("mensaje:entregado")

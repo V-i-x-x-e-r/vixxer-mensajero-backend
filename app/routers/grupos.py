@@ -13,7 +13,7 @@ from app.db import amigos as amigos_repo
 from app.db import push as push_repo
 from app.db import usuarios as usuarios_repo
 from app.db.supabase import supabase
-from app.schemas.grupos import CrearGrupo, RenombrarGrupo, AvatarGrupo, MiembrosIn, RolIn, ReaccionIn, MensajeGrupo, EditarMensajeGrupo
+from app.schemas.grupos import CrearGrupo, RenombrarGrupo, AvatarGrupo, MiembrosIn, RolIn, ReaccionIn, MensajeGrupo, EditarMensajeGrupo, LeidosIn
 from app.sockets.server import sio, esta_en_linea
 
 router = APIRouter(prefix="/grupos", tags=["grupos"])
@@ -180,6 +180,16 @@ async def enviar(grupo_id: str, datos: MensajeGrupo, yo: str = Depends(usuario_a
                 if tokens:
                     await enviar_push(tokens, titulo, f"{nombre} envió un mensaje", {"grupo": grupo_id})
     return {"ok": True, "id": msg["id"]}
+
+
+@router.post("/{grupo_id}/mensajes/leido")
+async def marcar_leidos(grupo_id: str, datos: LeidosIn, yo: str = Depends(usuario_actual)):
+    _solo_miembro(grupo_id, yo)
+    cambios = repo.marcar_leidos(grupo_id, yo, datos.ids)
+    if cambios:
+        for uid in repo.miembros_ids(grupo_id):
+            await sio.emit("grupo:leido", {"grupo_id": grupo_id, "lecturas": cambios}, room=uid)
+    return {"ok": True, "marcados": len(cambios)}
 
 
 @router.post("/{grupo_id}/mensajes/{mensaje_id}/reaccion")
