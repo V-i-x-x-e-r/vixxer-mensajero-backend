@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from app.db.supabase import supabase
 from app.core.validar import es_uuid
 
@@ -284,6 +286,31 @@ def editar_mensaje(mensaje_id: str, remitente_id: str, cifrados: list):
     return r.data[0] if r.data else None
 
 
+def marcar_leidos(grupo_id: str, usuario_id: str, ids: list):
+    validos = [i for i in ids if es_uuid(i)]
+    if not validos:
+        return []
+    r = (
+        supabase.table("mensajes_grupo")
+        .select("id, remitente_id, leido_por")
+        .eq("grupo_id", grupo_id)
+        .in_("id", validos)
+        .execute()
+    )
+    ahora = datetime.now(timezone.utc).isoformat()
+    cambios = []
+    for fila in r.data:
+        if fila["remitente_id"] == usuario_id:
+            continue
+        leido_por = fila.get("leido_por") or {}
+        if usuario_id in leido_por:
+            continue
+        leido_por[usuario_id] = ahora
+        supabase.table("mensajes_grupo").update({"leido_por": leido_por}).eq("id", fila["id"]).execute()
+        cambios.append({"id": fila["id"], "leido_por": leido_por})
+    return cambios
+
+
 def historial(grupo_id: str, usuario_id: str, antes: str = None, limite: int = 50):
     if not es_uuid(grupo_id) or not es_uuid(usuario_id):
         return []
@@ -324,6 +351,7 @@ def historial(grupo_id: str, usuario_id: str, antes: str = None, limite: int = 5
             "reacciones": m.get("reacciones") or {},
             "borrado": m.get("borrado", False),
             "editado": m.get("editado", False),
+            "leido_por": m.get("leido_por") or {},
             "contenido_cifrado": cif["contenido_cifrado"],
             "nonce": cif["nonce"],
         })

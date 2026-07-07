@@ -43,3 +43,7 @@ class MensajeGrupo(BaseModel):
 
 class EditarMensajeGrupo(BaseModel):
     cifrados: list[CifradoMiembro] = Field(min_length=1)
+
+
+class LeidosIn(BaseModel):
+    ids: list[str] = Field(min_length=1, max_length=200)
