@@ -18,6 +18,8 @@ from app.sockets.server import sio, esta_en_linea
 
 router = APIRouter(prefix="/grupos", tags=["grupos"])
 
+LIMITE_MIEMBROS = 80
+
 
 def _solo_admin(grupo_id: str, yo: str):
     if not repo.es_admin(grupo_id, yo):
@@ -50,6 +52,8 @@ async def _avisar_nuevos(grupo, nuevos: list, quien: str):
 async def crear(datos: CrearGrupo, yo: str = Depends(usuario_actual)):
     amigos = set(amigos_repo.ids_amigos(yo))
     miembros = [m for m in datos.miembros if es_uuid(m) and m in amigos and m != yo]
+    if len(miembros) + 1 > LIMITE_MIEMBROS:
+        raise HTTPException(status_code=400, detail=f"Los grupos admiten hasta {LIMITE_MIEMBROS} miembros")
     grupo = repo.crear(datos.nombre.strip(), yo, miembros)
     await _avisar_nuevos(grupo, miembros, yo)
     return grupo
@@ -97,6 +101,9 @@ async def agregar(grupo_id: str, datos: MiembrosIn, yo: str = Depends(usuario_ac
     _solo_admin(grupo_id, yo)
     amigos = set(amigos_repo.ids_amigos(yo))
     candidatos = [m for m in datos.miembros if es_uuid(m) and m in amigos]
+    actuales = len(repo.miembros_ids(grupo_id))
+    if actuales + len(candidatos) > LIMITE_MIEMBROS:
+        raise HTTPException(status_code=400, detail=f"Los grupos admiten hasta {LIMITE_MIEMBROS} miembros")
     nuevos = repo.agregar_miembros(grupo_id, candidatos)
     if nuevos:
         grupo = repo.info(grupo_id)
