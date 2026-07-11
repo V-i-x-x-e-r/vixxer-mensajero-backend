@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vixxer · Test Socket E2EE</title>
+  <!-- Cliente Socket.IO (debe coincidir con python-socketio del server: v4 del protocolo) -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    :root { font-family: system-ui, sans-serif; }
+    body { max-width: 720px; margin: 24px auto; padding: 0 16px; color: #1a1a1a; }
+    h1 { font-size: 1.3rem; }
+    fieldset { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 16px; padding: 12px 16px; }
+    legend { font-weight: 600; padding: 0 6px; }
+    label { display: block; font-size: .85rem; margin-top: 8px; color: #444; }
+    input { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #ccc; border-radius: 6px; }
+    button { margin-top: 12px; padding: 8px 14px; border: 0; border-radius: 6px; background: #5b46e0; color: #fff; cursor: pointer; }
+    button.sec { background: #888; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .row { display: flex; gap: 10px; }
+    .row > * { flex: 1; }
+    .pill { display: inline-block; font-size: .75rem; padding: 2px 8px; border-radius: 999px; background: #eee; }
+    .pill.on { background: #16a34a; color: #fff; }
+    .pill.off { background: #dc2626; color: #fff; }
+    #log { background: #0f111a; color: #d6e2ff; font-family: ui-monospace, monospace; font-size: .8rem;
+           padding: 12px; border-radius: 8px; height: 240px; overflow-y: auto; white-space: pre-wrap; }
+    .log-in { color: #7ee787; }
+    .log-out { color: #ffa657; }
+    .log-sys { color: #8b949e; }
+    .log-err { color: #ff7b72; }
+  </style>
+</head>
+<body>
+  <h1>Vixxer · Test de transporte E2EE <span id="estado" class="pill off">desconectado</span></h1>
+  <p class="log-sys" style="font-size:.85rem">
+    Abre esta página en <b>dos pestañas</b> con dos usuarios distintos. El server solo transporta el blob:
+    nunca descifra ni loggea <code>contenidoCifrado</code>. Aquí mandas un blob de mentira para probar el transporte.
+  </p>
+
+  <fieldset>
+    <legend>1 · Servidor + Login</legend>
+    <label>Base URL del backend</label>
+    <input id="baseUrl" value="http://localhost:8000" />
+    <div class="row">
+      <div>
+        <label>Usuario</label>
+        <input id="usuario" placeholder="paola" />
+      </div>
+      <div>
+        <label>Contraseña</label>
+        <input id="contrasena" type="password" placeholder="••••••" />
+      </div>
+    </div>
+    <div class="row">
+      <button id="btnLogin">Login y conectar</button>
+      <button id="btnRegister" class="sec">Registrar usuario nuevo</button>
+    </div>
+    <label>Tu ID (se llena tras login)</label>
+    <input id="miId" readonly placeholder="—" />
+  </fieldset>
+
+  <fieldset>
+    <legend>2 · Enviar mensaje (blob de prueba)</legend>
+    <label>destinatarioId (el ID de la otra pestaña)</label>
+    <input id="destinatarioId" placeholder="pega aquí el ID del otro usuario" />
+    <label>contenidoCifrado (texto cualquiera; simula el blob)</label>
+    <input id="contenido" value="loquesea" />
+    <label>nonce</label>
+    <input id="nonce" value="x" />
+    <button id="btnEnviar" disabled>Emitir mensaje:enviar</button>
+  </fieldset>
+
+  <fieldset>
+    <legend>3 · Log</legend>
+    <div id="log"></div>
+  </fieldset>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let socket = null;
+    let token = null;
+
+    function log(msg, cls = "log-sys") {
+      const el = $("log");
+      const line = document.createElement("div");
+      line.className = cls;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function setEstado(on) {
+      const p = $("estado");
+      p.textContent = on ? "conectado" : "desconectado";
+      p.className = "pill " + (on ? "on" : "off");
+      $("btnEnviar").disabled = !on;
+    }
+
+    async function api(path, body) {
+      const res = await fetch($("baseUrl").value.replace(/\/$/, "") + path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || res.status);
+      return data;
+    }
+
+    // --- Registro (necesita una llave_publica; aquí mandamos una de mentira para la prueba) ---
+    $("btnRegister").onclick = async () => {
+      try {
+        const out = await api("/api/auth/register", {
+          usuario: $("usuario").value.trim(),
+          contrasena: $("contrasena").value,
+          llave_publica: "test-pubkey-" + $("usuario").value.trim(),
+        });
+        log(`Registrado: ${out.usuario} (id ${out.id}). Ahora haz Login.`, "log-in");
+      } catch (e) {
+        log("Error registrando: " + e.message, "log-err");
+      }
+    };
+
+    // --- Login + conexión al socket ---
+    $("btnLogin").onclick = async () => {
+      try {
+        const out = await api("/api/auth/login", {
+          usuario: $("usuario").value.trim(),
+          contrasena: $("contrasena").value,
+        });
+        token = out.token;
+        $("miId").value = out.usuario.id;
+        log(`Login OK como ${out.usuario.usuario}. Tu ID: ${out.usuario.id}`, "log-in");
+        conectar();
+      } catch (e) {
+        log("Error en login: " + e.message, "log-err");
+      }
+    };
+
+    function conectar() {
+      if (socket) socket.disconnect();
+      socket = io($("baseUrl").value.replace(/\/$/, ""), {
+        auth: { token },           // el server lee auth.token en connect()
+        transports: ["websocket", "polling"],
+      });
+
+      socket.on("connect", () => { setEstado(true); log("Socket conectado (sid " + socket.id + ")", "log-sys"); });
+      socket.on("disconnect", (r) => { setEstado(false); log("Socket desconectado: " + r, "log-sys"); });
+      socket.on("connect_error", (e) => { setEstado(false); log("connect_error: " + e.message + " (¿token válido?)", "log-err"); });
+
+      // Lo que nos reenvía el server cuando alguien nos escribe
+      socket.on("mensaje:recibido", (fila) => {
+        log("⬅ mensaje:recibido " + JSON.stringify(fila), "log-in");
+      });
+    }
+
+    // --- Emitir mensaje:enviar y leer el ack ---
+    $("btnEnviar").onclick = () => {
+      const payload = {
+        destinatarioId: $("destinatarioId").value.trim(),
+        contenidoCifrado: $("contenido").value,
+        nonce: $("nonce").value,
+      };
+      log("➡ mensaje:enviar " + JSON.stringify(payload), "log-out");
+      socket.emit("mensaje:enviar", payload, (ack) => {
+        log("✓ ack: " + JSON.stringify(ack), "log-sys");
+      });
+    };
+  </script>
+</body>
+</html>
