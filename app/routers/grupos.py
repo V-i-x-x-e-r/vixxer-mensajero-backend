@@ -156,9 +156,7 @@ async def enviar(grupo_id: str, datos: MensajeGrupo, yo: str = Depends(usuario_a
         return {"ok": False, "error": "limite"}
     _solo_miembro(grupo_id, yo)
     miembros = set(repo.miembros_ids(grupo_id))
-    cifrados = [c.model_dump() for c in datos.cifrados if c.destinatario_id in miembros]
-    if not cifrados:
-        return {"ok": False, "error": "sin_destinatarios"}
+    cifrados = validar_cifrados(datos.cifrados, miembros)
     msg, creado = repo.guardar_mensaje(grupo_id, yo, datos.cliente_id, cifrados, respuesta_a=datos.respuesta_a)
     if creado:
         remitente = usuarios_repo.buscar_por_id(yo)
@@ -227,9 +225,7 @@ async def borrar_mensaje(grupo_id: str, mensaje_id: str, yo: str = Depends(usuar
 async def editar_mensaje(grupo_id: str, mensaje_id: str, datos: EditarMensajeGrupo, yo: str = Depends(usuario_actual)):
     _solo_miembro(grupo_id, yo)
     miembros = set(repo.miembros_ids(grupo_id))
-    cifrados = [c.model_dump() for c in datos.cifrados if c.destinatario_id in miembros]
-    if not cifrados:
-        return {"ok": False, "error": "sin_destinatarios"}
+    cifrados = validar_cifrados(datos.cifrados, miembros)
     msg = repo.mensaje_por_id(mensaje_id)
     if not msg or msg["grupo_id"] != grupo_id:
         raise HTTPException(status_code=404, detail="Mensaje no encontrado")
@@ -248,3 +244,10 @@ async def editar_mensaje(grupo_id: str, mensaje_id: str, datos: EditarMensajeGru
             "nonce": cif["nonce"],
         }, room=uid)
     return {"ok": True}
+
+
+def validar_cifrados(cifrados, miembros: set[str]) -> list[dict]:
+    destinatarios = [c.destinatario_id for c in cifrados]
+    if len(destinatarios) != len(miembros) or set(destinatarios) != miembros:
+        raise HTTPException(status_code=409, detail="miembros_desactualizados")
+    return [c.model_dump() for c in cifrados]

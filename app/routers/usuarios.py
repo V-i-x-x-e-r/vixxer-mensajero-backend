@@ -11,7 +11,7 @@ from app.db import push as push_repo
 from app.db.supabase import supabase
 from app.schemas.preferencias import PreferenciasIn
 from app.schemas.avatar import AvatarIn
-from app.schemas.llave import LlaveIn, FirmaIn
+from app.schemas.llave import FirmaIn, IdentidadIn, LlaveIn
 from app.schemas.respaldo import RespaldoIn
 from app.schemas.push import PushTokenIn
 from app.sockets.server import esta_en_linea
@@ -36,6 +36,23 @@ def actualizar_llave(datos: LlaveIn, yo: str = Depends(usuario_actual)):
 @router.put("/llave-firma")
 def actualizar_llave_firma(datos: FirmaIn, yo: str = Depends(usuario_actual)):
     repo.actualizar(yo, {"llave_firma": datos.llave_firma})
+    return {"ok": True}
+
+
+@router.put("/identidad")
+def actualizar_identidad(datos: IdentidadIn, yo: str = Depends(usuario_actual)):
+    cambios = {
+        "llave_publica": datos.llave_publica,
+        "llave_firma": datos.llave_firma,
+    }
+    if datos.respaldo is not None:
+        cambios.update({
+            "respaldo_cifrado": datos.respaldo.cifrado,
+            "respaldo_nonce": datos.respaldo.nonce,
+            "respaldo_salt": datos.respaldo.salt,
+        })
+    if repo.actualizar(yo, cambios) is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return {"ok": True}
 
 

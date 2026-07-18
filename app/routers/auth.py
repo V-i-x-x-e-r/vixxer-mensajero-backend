@@ -26,13 +26,20 @@ def register(datos: RegistroIn, request: Request):
     codigo = generar_codigo()
     while repo.buscar_por_codigo(codigo):
         codigo = generar_codigo()
-    nuevo = repo.crear({
+    nuevo_usuario = {
         "usuario": datos.usuario,
         "clave_hash": hashear_password(datos.contrasena),
         "llave_publica": datos.llave_publica,
         "llave_firma": datos.llave_firma,
         "codigo": codigo,
-    })
+    }
+    if datos.respaldo is not None:
+        nuevo_usuario.update({
+            "respaldo_cifrado": datos.respaldo.cifrado,
+            "respaldo_nonce": datos.respaldo.nonce,
+            "respaldo_salt": datos.respaldo.salt,
+        })
+    nuevo = repo.crear(nuevo_usuario)
     return {"id": nuevo["id"], "usuario": nuevo["usuario"], "codigo": codigo}
 
 

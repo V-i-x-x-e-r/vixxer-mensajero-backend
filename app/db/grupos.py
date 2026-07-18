@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from postgrest.exceptions import APIError
+
 from app.db.supabase import supabase
 from app.core.validar import es_uuid
 
@@ -195,26 +197,24 @@ def info(grupo_id: str):
 
 def guardar_mensaje(grupo_id: str, remitente_id: str, cliente_id, cifrados: list, respuesta_a=None):
     if cliente_id:
-        previo = (
-            supabase.table("mensajes_grupo")
-            .select("*")
-            .eq("grupo_id", grupo_id)
-            .eq("cliente_id", cliente_id)
-            .limit(1)
-            .execute()
-        )
-        if previo.data:
-            return previo.data[0], False
-    r = (
-        supabase.table("mensajes_grupo")
-        .insert({
-            "grupo_id": grupo_id,
-            "remitente_id": remitente_id,
-            "cliente_id": cliente_id,
-            "respuesta_a": respuesta_a if es_uuid(respuesta_a) else None,
-        })
-        .execute()
-    )
+        previo = buscar_mensaje_por_cliente(grupo_id, remitente_id, cliente_id)
+        if previo:
+            return previo, False
+    datos = {
+        "grupo_id": grupo_id,
+        "remitente_id": remitente_id,
+        "cliente_id": cliente_id,
+        "respuesta_a": respuesta_a if es_uuid(respuesta_a) else None,
+    }
+    try:
+        r = supabase.table("mensajes_grupo").insert(datos).execute()
+    except APIError as error:
+        if error.code != "23505" or not cliente_id:
+            raise
+        previo = buscar_mensaje_por_cliente(grupo_id, remitente_id, cliente_id)
+        if previo is None:
+            raise
+        return previo, False
     msg = r.data[0]
     filas = [
         {
@@ -229,6 +229,19 @@ def guardar_mensaje(grupo_id: str, remitente_id: str, cliente_id, cifrados: list
     if filas:
         supabase.table("mensajes_grupo_cifrados").insert(filas).execute()
     return msg, True
+
+
+def buscar_mensaje_por_cliente(grupo_id: str, remitente_id: str, cliente_id: str):
+    previo = (
+        supabase.table("mensajes_grupo")
+        .select("*")
+        .eq("grupo_id", grupo_id)
+        .eq("remitente_id", remitente_id)
+        .eq("cliente_id", cliente_id)
+        .limit(1)
+        .execute()
+    )
+    return previo.data[0] if previo.data else None
 
 
 def mensaje_por_id(mensaje_id: str):

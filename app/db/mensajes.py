@@ -1,23 +1,40 @@
 from datetime import datetime, timezone
 
+from postgrest.exceptions import APIError
+
 from app.db.supabase import supabase
 from app.core.validar import es_uuid
 
 
 def guardar(datos: dict):
     cliente_id = datos.get("cliente_id")
+    remitente_id = datos.get("remitente_id")
     if cliente_id:
-        previo = (
-            supabase.table("mensajes")
-            .select("*")
-            .eq("cliente_id", cliente_id)
-            .limit(1)
-            .execute()
-        )
-        if previo.data:
-            return previo.data[0], False
-    r = supabase.table("mensajes").insert(datos).execute()
+        previo = buscar_por_cliente(remitente_id, cliente_id)
+        if previo:
+            return previo, False
+    try:
+        r = supabase.table("mensajes").insert(datos).execute()
+    except APIError as error:
+        if error.code != "23505" or not cliente_id:
+            raise
+        previo = buscar_por_cliente(remitente_id, cliente_id)
+        if previo is None:
+            raise
+        return previo, False
     return r.data[0], True
+
+
+def buscar_por_cliente(remitente_id: str, cliente_id: str):
+    previo = (
+        supabase.table("mensajes")
+        .select("*")
+        .eq("remitente_id", remitente_id)
+        .eq("cliente_id", cliente_id)
+        .limit(1)
+        .execute()
+    )
+    return previo.data[0] if previo.data else None
 
 
 def marcar_entregado(mensaje_id: str, destinatario_id: str):
