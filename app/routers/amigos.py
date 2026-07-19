@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 
 from app.core.deps import usuario_actual
 from app.core.codigo import normalizar_codigo
+from app.core.limites import permitido
 from app.core.push import enviar_push
 from app.db import amigos as repo
 from app.db import usuarios as usuarios_repo
@@ -23,6 +24,8 @@ router = APIRouter(prefix="/amigos", tags=["amigos"])
 
 @router.post("/solicitar")
 async def solicitar(datos: SolicitarIn, yo: str = Depends(usuario_actual)):
+    if not permitido(f"solicitar:{yo}", maximo=20, ventana=60):
+        raise HTTPException(status_code=429, detail="Demasiadas solicitudes, espera un momento")
     destino = usuarios_repo.buscar_por_codigo(normalizar_codigo(datos.codigo))
     if not destino:
         raise HTTPException(status_code=404, detail="Código no encontrado")
