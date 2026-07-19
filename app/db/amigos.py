@@ -54,7 +54,8 @@ def ids_amigos(usuario_id: str):
     ids = []
     for s in r.data:
         ids.append(s["para_id"] if s["de_id"] == usuario_id else s["de_id"])
-    return ids
+    bloqueados = set(bloqueados_de(usuario_id))
+    return [i for i in ids if i not in bloqueados]
 
 
 def eliminar_amistad(usuario_id: str, otro_id: str):
