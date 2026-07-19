@@ -32,6 +32,8 @@ def historial(otro_id: str, antes: str = None, yo: str = Depends(usuario_actual)
 @router.get("/conversaciones")
 def conversaciones(yo: str = Depends(usuario_actual)):
     convs = repo.conversaciones(yo)
+    bloqueados = set(amigos_repo.bloqueados_de(yo))
+    convs = [c for c in convs if c["otro_id"] not in bloqueados]
     usuarios = usuarios_repo.por_ids([c["otro_id"] for c in convs])
     salida = []
     for c in convs:
