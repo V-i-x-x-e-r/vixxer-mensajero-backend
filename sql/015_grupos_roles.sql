@@ -10,3 +10,4 @@ alter table mensajes_grupo add column if not exists respuesta_a uuid;
 alter table mensajes_grupo add column if not exists reacciones jsonb default '{}'::jsonb;
 alter table mensajes_grupo add column if not exists borrado boolean default false;
 alter table mensajes_grupo add column if not exists editado boolean default false;
+>
