@@ -93,5 +93,5 @@ def url(path: str, yo: str = Depends(usuario_actual)):
     dueno = path.split("/")[0]
     if dueno != yo and dueno not in amigos_repo.ids_amigos(yo):
         raise HTTPException(status_code=403, detail="Sin acceso")
-    firmado = supabase.storage.from_("Media").create_signed_url(path, 86400)
+    firmado = supabase.storage.from_("Media").create_signed_url(path, 3600)
     return {"url": firmado.get("signedURL") or firmado.get("signedUrl")}

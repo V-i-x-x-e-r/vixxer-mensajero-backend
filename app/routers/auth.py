@@ -13,7 +13,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def _ip(request: Request) -> str:
     reenviado = request.headers.get("x-forwarded-for")
     if reenviado:
-        return reenviado.split(",")[0].strip()
+        partes = [p.strip() for p in reenviado.split(",") if p.strip()]
+        if partes:
+            return partes[-1]
     return request.client.host if request.client else "?"
 
 
