@@ -91,7 +91,10 @@ def subir_avatar(datos: AvatarIn, yo: str = Depends(usuario_actual)):
     except (binascii.Error, ValueError):
         raise HTTPException(status_code=400, detail="Imagen inválida")
     path = f"{yo}/{int(time.time())}.jpg"
-    supabase.storage.from_("Avatares").upload(path, crudo, {"content-type": datos.tipo or "image/jpeg"})
+    try:
+        supabase.storage.from_("Avatares").upload(path, crudo, {"content-type": datos.tipo or "image/jpeg"})
+    except Exception:
+        raise HTTPException(status_code=502, detail="No se pudo subir la imagen")
     url = supabase.storage.from_("Avatares").get_public_url(path)
     repo.actualizar(yo, {"avatar_url": url})
     return {"avatar_url": url}
@@ -100,6 +103,8 @@ def subir_avatar(datos: AvatarIn, yo: str = Depends(usuario_actual)):
 @router.get("/preferencias")
 def obtener_preferencias(yo: str = Depends(usuario_actual)):
     user = repo.buscar_por_id(yo)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return {
         "mostrar_conexion": user.get("mostrar_conexion", True),
         "mostrar_acuses": user.get("mostrar_acuses", True),

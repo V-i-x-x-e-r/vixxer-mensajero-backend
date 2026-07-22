@@ -31,11 +31,14 @@ def subir(datos: MediaIn, yo: str = Depends(usuario_actual)):
     except (binascii.Error, ValueError):
         raise HTTPException(status_code=400, detail="Datos inválidos")
     path = ruta_media(yo)
-    supabase.storage.from_("Media").upload(
-        path,
-        crudo,
-        {"content-type": "application/octet-stream"},
-    )
+    try:
+        supabase.storage.from_("Media").upload(
+            path,
+            crudo,
+            {"content-type": "application/octet-stream"},
+        )
+    except Exception:
+        raise HTTPException(status_code=502, detail="No se pudo subir el archivo")
     return {"path": path}
 
 

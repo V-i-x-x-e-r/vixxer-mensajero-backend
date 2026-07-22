@@ -71,10 +71,14 @@ def eliminar_amistad(usuario_id: str, otro_id: str):
 def crear_bloqueo(usuario_id: str, bloqueado_id: str):
     r = (
         supabase.table("bloqueos")
-        .insert({"usuario_id": usuario_id, "bloqueado_id": bloqueado_id})
+        .upsert(
+            {"usuario_id": usuario_id, "bloqueado_id": bloqueado_id},
+            on_conflict="usuario_id,bloqueado_id",
+            ignore_duplicates=True,
+        )
         .execute()
     )
-    return r.data[0]
+    return r.data[0] if r.data else None
 
 
 def esta_bloqueado(usuario_id: str, bloqueado_id: str):
