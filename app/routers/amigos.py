@@ -59,6 +59,8 @@ async def aceptar(datos: AccionIn, yo: str = Depends(usuario_actual)):
     s = repo.solicitud_por_id(datos.id)
     if not s or s["para_id"] != yo:
         raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+    if s["estado"] != "pendiente":
+        raise HTTPException(status_code=409, detail="La solicitud ya fue atendida")
     repo.actualizar_estado(datos.id, "aceptada")
     quien = usuarios_repo.buscar_por_id(yo)
     nombre = quien["usuario"] if quien else "Alguien"
@@ -71,6 +73,8 @@ def rechazar(datos: AccionIn, yo: str = Depends(usuario_actual)):
     s = repo.solicitud_por_id(datos.id)
     if not s or s["para_id"] != yo:
         raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+    if s["estado"] != "pendiente":
+        raise HTTPException(status_code=409, detail="La solicitud ya fue atendida")
     repo.actualizar_estado(datos.id, "rechazada")
     return {"ok": True}
 

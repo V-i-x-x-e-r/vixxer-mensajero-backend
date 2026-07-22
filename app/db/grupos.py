@@ -13,7 +13,11 @@ def crear(nombre: str, creador_id: str, miembros: list):
     for uid in miembros:
         if es_uuid(uid) and uid != creador_id:
             filas.append({"grupo_id": grupo["id"], "usuario_id": uid, "rol": "miembro"})
-    supabase.table("grupo_miembros").insert(filas).execute()
+    try:
+        supabase.table("grupo_miembros").insert(filas).execute()
+    except APIError:
+        supabase.table("grupos").delete().eq("id", grupo["id"]).execute()
+        raise
     return grupo
 
 
@@ -58,7 +62,11 @@ def agregar_miembros(grupo_id: str, ids: list):
         if es_uuid(uid) and uid not in actuales
     ]
     if filas:
-        supabase.table("grupo_miembros").insert(filas).execute()
+        supabase.table("grupo_miembros").upsert(
+            filas,
+            on_conflict="grupo_id,usuario_id",
+            ignore_duplicates=True,
+        ).execute()
     return [f["usuario_id"] for f in filas]
 
 

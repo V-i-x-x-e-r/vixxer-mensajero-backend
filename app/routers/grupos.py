@@ -89,7 +89,10 @@ async def avatar(grupo_id: str, datos: AvatarGrupo, yo: str = Depends(usuario_ac
     except (binascii.Error, ValueError):
         raise HTTPException(status_code=400, detail="Imagen inválida")
     path = f"grupos/{grupo_id}-{int(time.time())}.jpg"
-    supabase.storage.from_("Avatares").upload(path, crudo, {"content-type": datos.tipo or "image/jpeg"})
+    try:
+        supabase.storage.from_("Avatares").upload(path, crudo, {"content-type": datos.tipo or "image/jpeg"})
+    except Exception:
+        raise HTTPException(status_code=502, detail="No se pudo subir la imagen")
     url = supabase.storage.from_("Avatares").get_public_url(path)
     repo.actualizar(grupo_id, {"avatar_url": url})
     await _avisar_actualizado(grupo_id)
