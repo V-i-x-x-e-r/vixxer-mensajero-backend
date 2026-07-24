@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from app.db.supabase import supabase
+from app.core.validar import es_uuid
 
 
 def buscar_por_usuario(usuario: str):
@@ -43,3 +44,18 @@ def marcar_desconexion(uid: str):
 def buscar_por_codigo(codigo: str):
     r = supabase.table("usuarios").select("id, usuario, llave_publica").eq("codigo", codigo).limit(1).execute()
     return r.data[0] if r.data else None
+
+
+def nombre_de(uid: str):
+    if not es_uuid(uid):
+        return "Alguien"
+    r = supabase.table("usuarios").select("usuario").eq("id", uid).limit(1).execute()
+    return r.data[0]["usuario"] if r.data else "Alguien"
+
+
+def sin_acuses(ids: list):
+    ids = [i for i in ids if es_uuid(i)]
+    if not ids:
+        return set()
+    r = supabase.table("usuarios").select("id, mostrar_acuses").in_("id", ids).execute()
+    return {u["id"] for u in r.data if not u.get("mostrar_acuses", True)}

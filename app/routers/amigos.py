@@ -4,6 +4,7 @@ from app.core.deps import usuario_actual
 from app.core.codigo import normalizar_codigo
 from app.core.limites import permitido
 from app.core.push import enviar_push
+from app.core.asincrono import en_hilo
 from app.db import amigos as repo
 from app.db import usuarios as usuarios_repo
 from app.db import mensajes as mensajes_repo
@@ -15,7 +16,7 @@ from app.sockets.server import sio, esta_en_linea
 async def _avisar(uid: str, evento: str, titulo: str, cuerpo: str, datos: dict):
     await sio.emit(evento, datos, room=uid)
     if not esta_en_linea(uid):
-        tokens = push_repo.tokens_de(uid)
+        tokens = await en_hilo(push_repo.tokens_de, uid)
         if tokens:
             await enviar_push(tokens, titulo, cuerpo, datos)
 
@@ -26,18 +27,17 @@ router = APIRouter(prefix="/amigos", tags=["amigos"])
 async def solicitar(datos: SolicitarIn, yo: str = Depends(usuario_actual)):
     if not permitido(f"solicitar:{yo}", maximo=20, ventana=60):
         raise HTTPException(status_code=429, detail="Demasiadas solicitudes, espera un momento")
-    destino = usuarios_repo.buscar_por_codigo(normalizar_codigo(datos.codigo))
+    destino = await en_hilo(usuarios_repo.buscar_por_codigo, normalizar_codigo(datos.codigo))
     if not destino:
         raise HTTPException(status_code=404, detail="Código no encontrado")
     if destino["id"] == yo:
         raise HTTPException(status_code=400, detail="No puedes agregarte a ti mismo")
-    if repo.esta_bloqueado(destino["id"], yo):
+    if await en_hilo(repo.esta_bloqueado, destino["id"], yo):
         raise HTTPException(status_code=403, detail="No se puede enviar la solicitud")
-    if repo.buscar_solicitud(yo, destino["id"]):
+    if await en_hilo(repo.buscar_solicitud, yo, destino["id"]):
         raise HTTPException(status_code=409, detail="Ya existe una solicitud")
-    repo.crear_solicitud(yo, destino["id"])
-    quien = usuarios_repo.buscar_por_id(yo)
-    nombre = quien["usuario"] if quien else "Alguien"
+    await en_hilo(repo.crear_solicitud, yo, destino["id"])
+    nombre = await en_hilo(usuarios_repo.nombre_de, yo)
     await _avisar(destino["id"], "amistad:solicitud", nombre, "Te envió una solicitud de amistad", {"solicitud": True})
     return {"ok": True}
 
@@ -56,14 +56,13 @@ def solicitudes(yo: str = Depends(usuario_actual)):
 
 @router.post("/aceptar")
 async def aceptar(datos: AccionIn, yo: str = Depends(usuario_actual)):
-    s = repo.solicitud_por_id(datos.id)
+    s = await en_hilo(repo.solicitud_por_id, datos.id)
     if not s or s["para_id"] != yo:
         raise HTTPException(status_code=404, detail="Solicitud no encontrada")
     if s["estado"] != "pendiente":
         raise HTTPException(status_code=409, detail="La solicitud ya fue atendida")
-    repo.actualizar_estado(datos.id, "aceptada")
-    quien = usuarios_repo.buscar_por_id(yo)
-    nombre = quien["usuario"] if quien else "Alguien"
+    await en_hilo(repo.actualizar_estado, datos.id, "aceptada")
+    nombre = await en_hilo(usuarios_repo.nombre_de, yo)
     await _avisar(s["de_id"], "amistad:aceptada", nombre, "Aceptó tu solicitud de amistad", {"amigo": yo})
     return {"ok": True}
 
