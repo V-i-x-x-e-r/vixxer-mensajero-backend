@@ -311,25 +311,17 @@ def marcar_leidos(grupo_id: str, usuario_id: str, ids: list):
     validos = [i for i in ids if es_uuid(i)]
     if not validos:
         return []
-    r = (
-        supabase.table("mensajes_grupo")
-        .select("id, remitente_id, leido_por")
-        .eq("grupo_id", grupo_id)
-        .in_("id", validos)
-        .execute()
-    )
     ahora = datetime.now(timezone.utc).isoformat()
-    cambios = []
-    for fila in r.data:
-        if fila["remitente_id"] == usuario_id:
-            continue
-        leido_por = fila.get("leido_por") or {}
-        if usuario_id in leido_por:
-            continue
-        leido_por[usuario_id] = ahora
-        supabase.table("mensajes_grupo").update({"leido_por": leido_por}).eq("id", fila["id"]).execute()
-        cambios.append({"id": fila["id"], "leido_por": leido_por})
-    return cambios
+    r = supabase.rpc(
+        "marcar_leidos_grupo",
+        {
+            "p_grupo_id": grupo_id,
+            "p_usuario_id": usuario_id,
+            "p_ids": validos,
+            "p_ahora": ahora,
+        },
+    ).execute()
+    return [{"id": f["id"], "leido_por": f["leido_por"]} for f in (r.data or [])]
 
 
 def historial(grupo_id: str, usuario_id: str, antes: str = None, limite: int = 50):
