@@ -35,7 +35,7 @@ def health():
 
 @app.get("/version")
 def version():
-    return {"version": "0.3.0"}
+    return {"version": "0.3.4"}
 
 
 asgi = socketio.ASGIApp(sio, other_asgi_app=app)
