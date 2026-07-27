@@ -36,7 +36,7 @@ def health():
 
 @app.get("/version")
 def version():
-    return {"version": "0.3.4"}
+    return {"version": "0.3.6"}
 
 
 asgi = LimiteCuerpo(socketio.ASGIApp(sio, other_asgi_app=app))
