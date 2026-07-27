@@ -4,13 +4,15 @@ import unittest
 from app.core.cuerpo import LimiteCuerpo
 
 
-def escenario(limite, cabeceras, trozos):
+def escenario(limite, cabeceras, trozos, app=None):
     recibidos = []
     leidos = []
 
-    async def app(scope, receive, send):
+    async def eco(scope, receive, send):
         while True:
             mensaje = await receive()
+            if mensaje["type"] == "http.disconnect":
+                break
             leidos.append(len(mensaje.get("body", b"")))
             if not mensaje.get("more_body"):
                 break
@@ -27,7 +29,7 @@ def escenario(limite, cabeceras, trozos):
         recibidos.append(mensaje)
 
     scope = {"type": "http", "headers": cabeceras}
-    asyncio.run(LimiteCuerpo(app, limite)(scope, receive, send))
+    asyncio.run(LimiteCuerpo(app or eco, limite)(scope, receive, send))
     return recibidos, leidos
 
 
@@ -55,6 +57,30 @@ class LimiteCuerpoTest(unittest.TestCase):
         cabeceras = [(b"content-length", b"diez")]
         recibidos, _ = escenario(50, cabeceras, [b"x" * 80])
         self.assertEqual(recibidos[0]["status"], 413)
+
+    def test_el_413_gana_sobre_el_error_que_levante_la_app(self):
+        async def se_queja(scope, receive, send):
+            while True:
+                mensaje = await receive()
+                if mensaje["type"] == "http.disconnect":
+                    break
+            await send({"type": "http.response.start", "status": 400, "headers": []})
+            await send({"type": "http.response.body", "body": b"parsing"})
+
+        recibidos, _ = escenario(50, [], [b"x" * 80], app=se_queja)
+        self.assertEqual([m["status"] for m in recibidos if "status" in m], [413])
+
+    def test_no_pisa_una_respuesta_ya_empezada(self):
+        async def responde_antes_de_leer(scope, receive, send):
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            while True:
+                mensaje = await receive()
+                if mensaje["type"] == "http.disconnect":
+                    break
+            await send({"type": "http.response.body", "body": b"parcial"})
+
+        recibidos, _ = escenario(50, [], [b"x" * 80], app=responde_antes_de_leer)
+        self.assertEqual([m["status"] for m in recibidos if "status" in m], [200])
 
     def test_no_toca_el_trafico_que_no_es_http(self):
         pasadas = []
