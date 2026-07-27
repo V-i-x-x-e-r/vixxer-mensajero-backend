@@ -3,10 +3,6 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 LIMITE_CUERPO = 96_000_000
 
 
-class CuerpoDemasiadoGrande(Exception):
-    pass
-
-
 async def _responder_413(send: Send):
     await send({
         "type": "http.response.start",
@@ -43,17 +39,29 @@ class LimiteCuerpo:
             await _responder_413(send)
             return
         leidos = 0
+        excedido = False
+        iniciado = False
 
         async def contar() -> Message:
-            nonlocal leidos
+            nonlocal leidos, excedido
+            if excedido:
+                return {"type": "http.disconnect"}
             mensaje = await receive()
             if mensaje["type"] == "http.request":
                 leidos += len(mensaje.get("body", b""))
                 if leidos > self.limite:
-                    raise CuerpoDemasiadoGrande()
+                    excedido = True
+                    return {"type": "http.disconnect"}
             return mensaje
 
-        try:
-            await self.app(scope, contar, send)
-        except CuerpoDemasiadoGrande:
+        async def silenciar(mensaje: Message):
+            nonlocal iniciado
+            if excedido and not iniciado:
+                return
+            if mensaje["type"] == "http.response.start":
+                iniciado = True
+            await send(mensaje)
+
+        await self.app(scope, contar, silenciar)
+        if excedido and not iniciado:
             await _responder_413(send)
