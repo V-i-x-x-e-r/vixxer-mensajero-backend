@@ -2,6 +2,7 @@ import socketio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.cuerpo import LimiteCuerpo
 from app.sockets.server import sio
 from app.routers.auth import router as auth_router
 from app.routers.usuarios import router as usuarios_router
@@ -38,4 +39,4 @@ def version():
     return {"version": "0.3.4"}
 
 
-asgi = socketio.ASGIApp(sio, other_asgi_app=app)
+asgi = LimiteCuerpo(socketio.ASGIApp(sio, other_asgi_app=app))
