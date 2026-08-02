@@ -4,6 +4,18 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.exceptions import InvalidSignature
 
 
+def mensaje_canonico(
+    remitente_id: str,
+    destinatario_id: str,
+    contenido_cifrado: str,
+    nonce: str,
+    cliente_id: str,
+    respuesta_a: str | None = None,
+) -> str:
+    base = f"{remitente_id}|{destinatario_id}|{contenido_cifrado}|{nonce}|{cliente_id}"
+    return f"{base}|{respuesta_a}" if respuesta_a else base
+
+
 def verificar_firma(mensaje: str, firma_b64: str, llave_firma_b64: str) -> bool:
     if not firma_b64 or not llave_firma_b64:
         return False

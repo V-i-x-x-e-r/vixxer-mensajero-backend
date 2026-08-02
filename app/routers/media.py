@@ -13,6 +13,7 @@ from app.core.media import (
     MediaInvalida,
     guardar_cifrado,
     leer_longitud,
+    validar_cifrado,
 )
 from app.core.deps import usuario_actual
 from app.core.limites import permitido
@@ -30,6 +31,12 @@ def subir(datos: MediaIn, yo: str = Depends(usuario_actual)):
         crudo = base64.b64decode(datos.datos, validate=True)
     except (binascii.Error, ValueError):
         raise HTTPException(status_code=400, detail="Datos inválidos")
+    try:
+        validar_cifrado(crudo)
+    except MediaDemasiadoGrande:
+        raise HTTPException(status_code=413, detail="Archivo demasiado grande")
+    except MediaInvalida:
+        raise HTTPException(status_code=400, detail="Archivo cifrado inválido")
     path = ruta_media(yo)
     try:
         supabase.storage.from_("Media").upload(

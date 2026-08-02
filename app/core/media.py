@@ -3,6 +3,7 @@ from typing import AsyncIterable, BinaryIO
 
 MAGIA = b"VX2CH1"
 LIMITE_BYTES = 70_000_000
+LIMITE_BASE64 = ((LIMITE_BYTES + 2) // 3) * 4
 
 
 class MediaInvalida(Exception):
@@ -29,6 +30,13 @@ def leer_longitud(valor: str | None) -> int:
     if longitud > LIMITE_BYTES:
         raise MediaDemasiadoGrande()
     return longitud
+
+
+def validar_cifrado(contenido: bytes):
+    if len(contenido) > LIMITE_BYTES:
+        raise MediaDemasiadoGrande()
+    if len(contenido) <= len(MAGIA) or not contenido.startswith(MAGIA):
+        raise MediaInvalida()
 
 
 async def guardar_cifrado(

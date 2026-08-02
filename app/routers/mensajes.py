@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from app.core.deps import usuario_actual
 from app.core.validar import es_uuid
 from app.core.limites import permitido
-from app.core.firma import verificar_firma
+from app.core.firma import mensaje_canonico, verificar_firma
 from app.core.push import enviar_push
 from app.core.asincrono import en_hilo
 from app.db import mensajes as repo
@@ -23,6 +23,7 @@ class RelayEntrada(BaseModel):
     nonce: str
     cliente_id: str | None = None
     firma: str | None = None
+    respuesta_a: str | None = None
 
 
 @router.get("/historial/{otro_id}")
@@ -72,7 +73,15 @@ async def relay(datos: RelayEntrada, yo: str = Depends(usuario_actual)):
     if await en_hilo(amigos_repo.esta_bloqueado, destinatario_id, remitente_id):
         return {"ok": False, "error": "bloqueado"}
     remitente = await en_hilo(usuarios_repo.buscar_por_id, remitente_id)
-    mensaje = f"{remitente_id}|{destinatario_id}|{datos.contenido_cifrado}|{datos.nonce}|{datos.cliente_id or ''}"
+    respuesta_a = datos.respuesta_a if es_uuid(datos.respuesta_a) else None
+    mensaje = mensaje_canonico(
+        remitente_id,
+        destinatario_id,
+        datos.contenido_cifrado,
+        datos.nonce,
+        datos.cliente_id or "",
+        respuesta_a,
+    )
     if not remitente or not verificar_firma(mensaje, datos.firma, remitente.get("llave_firma")):
         return {"ok": False, "error": "firma"}
     fila, creado = await en_hilo(repo.guardar, {
@@ -80,7 +89,7 @@ async def relay(datos: RelayEntrada, yo: str = Depends(usuario_actual)):
         "destinatario_id": destinatario_id,
         "contenido_cifrado": datos.contenido_cifrado,
         "nonce": datos.nonce,
-        "respuesta_a": None,
+        "respuesta_a": respuesta_a,
         "cliente_id": datos.cliente_id,
     })
     if creado:

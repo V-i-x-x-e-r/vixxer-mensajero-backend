@@ -207,7 +207,7 @@ def guardar_mensaje(grupo_id: str, remitente_id: str, cliente_id, cifrados: list
     if cliente_id:
         previo = buscar_mensaje_por_cliente(grupo_id, remitente_id, cliente_id)
         if previo:
-            return previo, False
+            return previo, guardar_cifrados(previo["id"], cifrados)
     datos = {
         "grupo_id": grupo_id,
         "remitente_id": remitente_id,
@@ -222,11 +222,29 @@ def guardar_mensaje(grupo_id: str, remitente_id: str, cliente_id, cifrados: list
         previo = buscar_mensaje_por_cliente(grupo_id, remitente_id, cliente_id)
         if previo is None:
             raise
-        return previo, False
+        return previo, guardar_cifrados(previo["id"], cifrados)
     msg = r.data[0]
+    return msg, guardar_cifrados(msg["id"], cifrados)
+
+
+def guardar_cifrados(mensaje_id: str, cifrados: list) -> set[str]:
+    filas = filas_cifradas(mensaje_id, cifrados)
+    existentes = destinatarios_cifrados(mensaje_id)
+    faltantes = [fila for fila in filas if fila["destinatario_id"] not in existentes]
+    if not faltantes:
+        return set()
+    supabase.table("mensajes_grupo_cifrados").upsert(
+        faltantes,
+        on_conflict="mensaje_id,destinatario_id",
+        ignore_duplicates=True,
+    ).execute()
+    return {fila["destinatario_id"] for fila in faltantes}
+
+
+def filas_cifradas(mensaje_id: str, cifrados: list) -> list[dict]:
     filas = [
         {
-            "mensaje_id": msg["id"],
+            "mensaje_id": mensaje_id,
             "destinatario_id": c.get("destinatario_id"),
             "contenido_cifrado": c.get("contenido_cifrado"),
             "nonce": c.get("nonce"),
@@ -234,9 +252,17 @@ def guardar_mensaje(grupo_id: str, remitente_id: str, cliente_id, cifrados: list
         for c in cifrados
         if es_uuid(c.get("destinatario_id"))
     ]
-    if filas:
-        supabase.table("mensajes_grupo_cifrados").insert(filas).execute()
-    return msg, True
+    return filas
+
+
+def destinatarios_cifrados(mensaje_id: str) -> set[str]:
+    resultado = (
+        supabase.table("mensajes_grupo_cifrados")
+        .select("destinatario_id")
+        .eq("mensaje_id", mensaje_id)
+        .execute()
+    )
+    return {fila["destinatario_id"] for fila in resultado.data}
 
 
 def buscar_mensaje_por_cliente(grupo_id: str, remitente_id: str, cliente_id: str):
