@@ -167,13 +167,13 @@ async def enviar(grupo_id: str, datos: MensajeGrupo, yo: str = Depends(usuario_a
     await en_hilo(_solo_miembro, grupo_id, yo)
     miembros = set(await en_hilo(repo.miembros_ids, grupo_id))
     cifrados = validar_cifrados(datos.cifrados, miembros)
-    msg, creado = await en_hilo(repo.guardar_mensaje, grupo_id, yo, datos.cliente_id, cifrados, respuesta_a=datos.respuesta_a)
-    if creado:
+    msg, destinatarios = await en_hilo(repo.guardar_mensaje, grupo_id, yo, datos.cliente_id, cifrados, respuesta_a=datos.respuesta_a)
+    if destinatarios:
         nombre = await en_hilo(usuarios_repo.nombre_de, yo)
         grupo = await en_hilo(repo.info, grupo_id)
         titulo = grupo["nombre"] if grupo else "Grupo"
         por_dest = {c["destinatario_id"]: c for c in cifrados}
-        for uid in miembros:
+        for uid in destinatarios:
             if uid == yo:
                 continue
             cif = por_dest.get(uid)

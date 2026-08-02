@@ -8,6 +8,7 @@ from app.core.media import (
     MediaInvalida,
     guardar_cifrado,
     leer_longitud,
+    validar_cifrado,
 )
 
 
@@ -31,6 +32,15 @@ class LongitudMediaTest(unittest.TestCase):
     def test_rechaza_archivo_demasiado_grande(self):
         with self.assertRaises(MediaDemasiadoGrande):
             leer_longitud(str(LIMITE_BYTES + 1))
+
+    def test_valida_limite_y_cabecera_del_formato_heredado(self):
+        validar_cifrado(b"VX2CH1contenido")
+
+        with self.assertRaises(MediaInvalida):
+            validar_cifrado(b"otro-contenido")
+
+        with self.assertRaises(MediaDemasiadoGrande):
+            validar_cifrado(b"VX2CH1" + b"x" * LIMITE_BYTES)
 
 
 class GuardarMediaTest(unittest.IsolatedAsyncioTestCase):
