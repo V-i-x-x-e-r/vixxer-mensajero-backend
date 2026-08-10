@@ -36,6 +36,26 @@ def actualizar(uid: str, datos: dict):
     return r.data[0] if r.data else None
 
 
+def borrar_cuenta(uid: str):
+    if not es_uuid(uid):
+        return False
+    supabase.rpc("borrar_cuenta", {"p_usuario": uid}).execute()
+    return True
+
+
+def borrar_archivos(uid: str):
+    if not es_uuid(uid):
+        return
+    for bucket in ("Media", "Avatares"):
+        try:
+            objetos = supabase.storage.from_(bucket).list(uid) or []
+            rutas = [f"{uid}/{o['name']}" for o in objetos if o.get("name")]
+            if rutas:
+                supabase.storage.from_(bucket).remove(rutas)
+        except Exception:
+            continue
+
+
 def marcar_desconexion(uid: str):
     ahora = datetime.now(timezone.utc).isoformat()
     supabase.table("usuarios").update({"ultima_conexion": ahora}).eq("id", uid).execute()
