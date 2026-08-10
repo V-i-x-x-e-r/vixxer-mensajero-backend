@@ -21,6 +21,10 @@ class CambiarContrasenaIn(BaseModel):
     nueva: str = Field(min_length=6, max_length=100)
 
 
+class BorrarCuentaIn(BaseModel):
+    contrasena: str
+
+
 class UsuarioOut(BaseModel):
     id: str
     usuario: str
