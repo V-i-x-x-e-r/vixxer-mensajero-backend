@@ -60,3 +60,6 @@ temp/
 *.sqlite
 *.sqlite3
 *.db
+
+# Notas locales de trabajo
+CLAUDE.md
