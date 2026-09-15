@@ -49,5 +49,11 @@ reiniciar y el proceso viejo sigue sirviendo.
 La rama por defecto del repo es `main`, no `develop`. Importa porque las
 tareas programadas de GitHub corren desde la rama por defecto.
 
-`requirements.txt` no tiene versiones fijadas: hoy una publicación upstream
-puede tumbar el backend sin que nadie toque el código.
+Las nueve dependencias de `requirements.txt` están fijadas con `==`, así que
+una publicación upstream no puede tumbar el despliegue sin que alguien toque
+el código.
+
+El proceso corre bajo `vixxer-back.service` en el servidor de casa. Sus logs,
+incluido cualquier traceback que devuelva un 500, salen con
+`journalctl -u vixxer-back`. El autodespliegue es otra unidad,
+`vixxer-deploy`, y se mira aparte.
